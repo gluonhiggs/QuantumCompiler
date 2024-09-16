@@ -1,0 +1,11 @@
+numpy<2
+scipy==1.14.1
+torch==2.4.1
+gym==0.26.2
+stable-baselines3==2.3.2
+matplotlib==3.9.2
+seaborn==0.13.2
+pandas==2.2.2
+baselines==0.1.5
+tensorflow-gpu==2.11.0
+shimmy>=0.2.1

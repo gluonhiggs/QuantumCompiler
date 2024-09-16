@@ -1,0 +1,8 @@
+{
+    "name": "Quantum Compiler Dev Container",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "runArgs": ["--gpus", "all"]
+}
