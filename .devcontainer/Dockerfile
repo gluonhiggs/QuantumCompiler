@@ -23,7 +23,7 @@ RUN apt-get update && \
         sudo \
         tree \
         libcudnn8\
-        libcudnn8-dev
+        libcudnn8-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
