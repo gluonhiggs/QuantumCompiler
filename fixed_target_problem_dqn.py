@@ -187,7 +187,7 @@ if __name__ == '__main__':
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     
-    model.learn(total_timesteps=500000)
+    model.learn(total_timesteps=3000000)
     
     # For evaluation, we need a single environment
     eval_env = QuantumCompilerEnv(gate_set=my_gate_set, tolerance=0.99)
