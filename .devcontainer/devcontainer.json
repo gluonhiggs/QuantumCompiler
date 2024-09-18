@@ -2,7 +2,16 @@
     "name": "Quantum Compiler Dev Container",
     "build": {
         "dockerfile": "Dockerfile",
-        "context": ".."
+        "context": "..",
+        "args": {
+            "NVIDIA_DRIVER_CAPABILITIES": "all"
+        }
     },
-    "runArgs": ["--gpus", "all"]
+    "runArgs": [
+        "--gpus", "all",
+        "--privileged"
+    ],
+    "containerEnv": {
+        "NVIDIA_DRIVER_CAPABILITIES": "all"
+    }
 }
