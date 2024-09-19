@@ -126,7 +126,7 @@ def describe_gate(gate):
             return gate_descriptions[idx]
     return "Unknown Gate"
 
-def evaluate_agent(model, env, num_episodes=1):
+def evaluate_agent(model, env, num_episodes=50000):
     success_count = 0
     for _ in range(num_episodes):
         obs = env.reset()
