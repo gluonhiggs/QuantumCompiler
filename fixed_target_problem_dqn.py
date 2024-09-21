@@ -38,6 +38,12 @@ def build_target_unitary(gate_set, num_gates=87):
         U = np.dot(gate, U)
     return U
 
+def get_fixed_target_unitary():
+    return np.array([
+        [0.76749896 - 0.43959894j, -0.09607122 + 0.45658344j],
+        [0.09607122 + 0.45658344j,  0.76749896 + 0.43959894j]
+    ], dtype=complex)
+
 class QuantumCompilerEnv(gym.Env):
     def __init__(self, gate_set, tolerance):
         super(QuantumCompilerEnv, self).__init__()
@@ -51,19 +57,19 @@ class QuantumCompilerEnv(gym.Env):
     def reset(self):
         self.current_step = 0
         self.U_n = np.eye(2, dtype=complex)
-        self.target_U = build_target_unitary(self.gate_set, num_gates=87)
+        self.target_U = get_fixed_target_unitary()
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         return self._get_observation()
     
     def step(self, action):
         gate = self.gate_set[action]
-        self.U_n = np.dot(gate, self.U_n)
+        self.U_n = np.dot(self.U_n, gate)
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         reward = self._compute_reward()
         done = self._check_done()
         obs = self._get_observation()
-        info = {}
         self.current_step += 1
+        info = {}
         return obs, reward, done, info
     
     def _get_observation(self):
@@ -73,7 +79,7 @@ class QuantumCompilerEnv(gym.Env):
     def _compute_reward(self):
         L = self.max_steps
         n = self.current_step
-        fidelity = self._average_gate_fidelity(self.U_n, self.target_U)
+        fidelity = self._temporary_gate_fidelity(self.U_n, self.target_U)
         distance = 1 - fidelity
         
         if distance < (1 - self.tolerance):
@@ -83,19 +89,19 @@ class QuantumCompilerEnv(gym.Env):
         return reward
 
     def _check_done(self):
-        fidelity = self._average_gate_fidelity(self.U_n, self.target_U)
+        fidelity = self._temporary_gate_fidelity(self.U_n, self.target_U)
         if fidelity >= self.tolerance or self.current_step >= self.max_steps:
             return True
         else:
             return False
     
-    def _average_gate_fidelity(self, U, V):
-        return (np.abs(np.trace(np.dot(U.conj().T, V)))**2 + 4) / 12
-    
-    def seed(self, seed=None):
-        np.random.seed(seed)
-        if seed is not None:
-            self.action_space.seed(seed)
+    def _temporary_gate_fidelity(self, U, V):
+        # return (np.abs(np.trace(np.dot(U.conj().T, V)))**2 + 4) / 12
+        d = 2
+        U_dagger = np.conjugate(U.T)
+        trace_U_dagger_V = np.trace(np.dot(U_dagger, V))
+        fidelity = (1 / d**2) * np.abs(trace_U_dagger_V)**2
+        return fidelity
 
 
 policy_kwargs = dict(
@@ -126,7 +132,7 @@ def describe_gate(gate):
             return gate_descriptions[idx]
     return "Unknown Gate"
 
-def evaluate_agent(model, env, num_episodes=50000):
+def evaluate_agent(model, env, num_episodes=20000):
     success_count = 0
     for _ in range(num_episodes):
         obs = env.reset()
@@ -135,8 +141,8 @@ def evaluate_agent(model, env, num_episodes=50000):
         while not done:
             action, _ = model.predict(obs, deterministic=True)
             gate_sequence.append(action)
-            obs, reward, done, info = env.step(action)
-        fidelity = env._average_gate_fidelity(env.U_n, env.target_U)
+            obs, reward, done, _= env.step(action)
+        fidelity = env._temporary_gate_fidelity(env.U_n, env.target_U)
         sequence_length = len(gate_sequence)
         print(f"Final Fidelity: {fidelity}")
         print(f"Sequence Length: {sequence_length}")
@@ -156,18 +162,13 @@ def evaluate_agent(model, env, num_episodes=50000):
 
 if __name__ == '__main__':
     env = QuantumCompilerEnv(gate_set=my_gate_set, tolerance=0.99)
-        # Seed for reproducibility
-    seed_value = 42
-    env.seed(seed_value)
-    np.random.seed(seed_value)
-    torch.manual_seed(seed_value)
     # Calculate decay steps to match epsilon decay rate
-    decay_rate = 0.99976
-    epsilon_initial = 1.0
-    epsilon_final = 0.02
-    decay_steps = int(np.log(epsilon_final / epsilon_initial) / np.log(decay_rate))
-    total_timesteps = decay_steps + 5000  # Additional steps to ensure decay completes
-    exploration_fraction = decay_steps / total_timesteps
+    # decay_rate = 0.99976
+    # epsilon_initial = 1.0
+    # epsilon_final = 0.02
+    # decay_steps = int(np.log(epsilon_final / epsilon_initial) / np.log(decay_rate))
+    # total_timesteps = decay_steps + 5000  # Additional steps to ensure decay completes
+    # exploration_fraction = decay_steps / total_timesteps
 
     model = DQN(
         'MlpPolicy',
@@ -176,10 +177,11 @@ if __name__ == '__main__':
         learning_rate=0.0005,  # Adjusted to match the paper
         batch_size=1000,       # Adjusted to match the paper
         train_freq=(1, 'episode'),
-        gradient_steps=-1,      # Adjusted to match the paper
+        # gradient_steps=-1,      # Adjusted to match the paper
         exploration_initial_eps=1.0,
         exploration_final_eps=0.02,
-        exploration_fraction=exploration_fraction,  # Adjusted to match the paper
+        # gamma= 0.99976,
+        exploration_fraction=0.99976,  # Adjusted to match the paper
         learning_starts=1000,
         target_update_interval=1000,
         buffer_size=10000,
@@ -187,10 +189,7 @@ if __name__ == '__main__':
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     
-    model.learn(total_timesteps=3000000)
+    model.learn(total_timesteps=3000000, log_interval=100)
     
-    # For evaluation, we need a single environment
-    eval_env = QuantumCompilerEnv(gate_set=my_gate_set, tolerance=0.99)
-    
-    success_rate = evaluate_agent(model, eval_env)
+    success_rate = evaluate_agent(model, env)
     print(f'Success rate: {success_rate * 100:.2f}%')
