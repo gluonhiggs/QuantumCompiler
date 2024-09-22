@@ -79,7 +79,7 @@ class QuantumCompilerEnv(gym.Env):
     def _compute_reward(self):
         L = self.max_steps
         n = self.current_step
-        fidelity = self._temporary_gate_fidelity(self.U_n, self.target_U)
+        fidelity = self._average_gate_fidelity(self.U_n, self.target_U)
         distance = 1 - fidelity
         
         if distance < (1 - self.tolerance):
@@ -89,13 +89,13 @@ class QuantumCompilerEnv(gym.Env):
         return reward
 
     def _check_done(self):
-        fidelity = self._temporary_gate_fidelity(self.U_n, self.target_U)
+        fidelity = self._average_gate_fidelity(self.U_n, self.target_U)
         if fidelity >= self.tolerance or self.current_step >= self.max_steps:
             return True
         else:
             return False
     
-    def _temporary_gate_fidelity(self, U, V):
+    def _average_gate_fidelity(self, U, V):
         # return (np.abs(np.trace(np.dot(U.conj().T, V)))**2 + 4) / 12
         d = 2
         U_dagger = np.conjugate(U.T)
@@ -142,7 +142,7 @@ def evaluate_agent(model, env, num_episodes=20000):
             action, _ = model.predict(obs, deterministic=True)
             gate_sequence.append(action)
             obs, reward, done, _= env.step(action)
-        fidelity = env._temporary_gate_fidelity(env.U_n, env.target_U)
+        fidelity = env._average_gate_fidelity(env.U_n, env.target_U)
         sequence_length = len(gate_sequence)
         print(f"Final Fidelity: {fidelity}")
         print(f"Sequence Length: {sequence_length}")
@@ -161,7 +161,7 @@ def evaluate_agent(model, env, num_episodes=20000):
 
 
 if __name__ == '__main__':
-    env = QuantumCompilerEnv(gate_set=my_gate_set, tolerance=0.99)
+    env = QuantumCompilerEnv(gate_set=my_gate_set, tolerance=0.98)
     # Calculate decay steps to match epsilon decay rate
     # decay_rate = 0.99976
     # epsilon_initial = 1.0
@@ -182,8 +182,8 @@ if __name__ == '__main__':
         exploration_final_eps=0.02,
         # gamma= 0.99976,
         exploration_fraction=0.99976,  # Adjusted to match the paper
-        learning_starts=1000,
-        target_update_interval=1000,
+        learning_starts=10000,
+        target_update_interval=2000,
         buffer_size=10000,
         verbose=1,
         device='cuda',  # Change to 'cpu' if not using GPU
