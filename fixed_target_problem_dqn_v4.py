@@ -57,7 +57,7 @@ class QuantumCompilerEnv(gym.Env):
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         self.previous_axis = None
         self.axis_changes = 0
-        self.axis_change_penalty_rate = 0.05
+        self.axis_change_penalty_rate = 0.001
         return self._get_observation(), {}
     
     def step(self, action):
