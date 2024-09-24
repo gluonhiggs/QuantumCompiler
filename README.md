@@ -7,9 +7,12 @@ This is a repository for the Quantum Compiler project. The goal of this project 
 The paper presents the following problems:
 
 [x] Training neural networks for approximate a single-qubit gate
+
 [] Quantum compiling by rotation operators
+
 [] Quantum compiling by the HRC efficiently universal base of gates
 
+Note: [x] means the problem has been solved.
 ## Installation
 
 Clone the repository and open it with VSCode. Press `Ctrl+Shift+P` on Windows or `Cmd+Shift+P` on MacOS to open the command palette. Then type `Open the Folder in Container` and select the repository folder. This will open the repository in a Docker container with all the necessary dependencies installed.
