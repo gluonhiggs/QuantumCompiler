@@ -57,7 +57,7 @@ class QuantumCompilerEnv(gym.Env):
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         self.previous_axis = None
         self.axis_changes = 0
-        self.axis_change_penalty_rate = 0.001
+        self.axis_change_penalty_rate = 0.005
         return self._get_observation(), {}
     
     def step(self, action):
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     )
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=10000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=20000000, log_interval=100, callback=plotting_callback)
     
     success_rate = evaluate_agent(model, env)
     print(f'Success rate: {success_rate * 100:.2f}%')
