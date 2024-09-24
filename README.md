@@ -1,6 +1,6 @@
 # QuantumCompiler
 
-This is a repository for the Quantum Compiler project. The goal of this project is to reproduce the results of the paper [Quantum compiling by deep reinforcement learning](https://www.nature.com/articles/s42005-021-00684-3#ref-CR7). The paper presents a quantum compiler that uses deep reinforcement learning to optimize the compilation of quantum circuits.
+This is a repository for the Quantum Compiler project. The goal of this project is to **reproduce the results** of the paper [Quantum compiling by deep reinforcement learning](https://www.nature.com/articles/s42005-021-00684-3#ref-CR7). The paper presents a quantum compiler that uses deep reinforcement learning to optimize the compilation of quantum circuits.
 
 ## Problems
 

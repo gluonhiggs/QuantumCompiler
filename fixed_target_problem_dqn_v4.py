@@ -57,7 +57,7 @@ class QuantumCompilerEnv(gym.Env):
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         self.previous_axis = None
         self.axis_changes = 0
-        self.axis_change_penalty_rate = 0.005
+        self.axis_change_penalty_rate = 1.0001
         return self._get_observation(), {}
     
     def step(self, action):
@@ -93,7 +93,7 @@ class QuantumCompilerEnv(gym.Env):
             reward = (L - n) + 1
         else:
             reward = -distance / L
-        reward -= self.axis_changes * self.axis_change_penalty_rate
+        reward -= self.axis_changes/ L * self.axis_change_penalty_rate
         return reward
 
     def _check_done(self):
@@ -214,15 +214,15 @@ if __name__ == '__main__':
         env,
         policy_kwargs=policy_kwargs,
         learning_rate=0.0005,  
-        batch_size=10000,      
+        batch_size=100000,      
         train_freq=(1, 'episode'),
         exploration_initial_eps=1.0,
         exploration_final_eps=0.02,
         # gamma= 0.99976,
         exploration_fraction=0.99976, 
-        learning_starts=50000,
+        learning_starts=100000,
         target_update_interval=20000,
-        buffer_size=100000,
+        buffer_size=300000,
         verbose=1,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
