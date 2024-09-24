@@ -25,12 +25,12 @@ def rotation_gate(axis, angle):
 
 gate_descriptions = ["rxp", "rxn", "ryp", "ryn", "rzp", "rzn"]
 gate_matrices = [
-    rotation_gate('x', np.pi / 128),    # rxp
-    rotation_gate('x', -np.pi / 128),   # rxn
-    rotation_gate('y', np.pi / 128),    # ryp
-    rotation_gate('y', -np.pi / 128),   # ryn
-    rotation_gate('z', np.pi / 128),    # rzp
-    rotation_gate('z', -np.pi / 128)    # rzn
+    rotation_gate('x', np.pi / 256),    # rxp
+    rotation_gate('x', -np.pi / 256),   # rxn
+    rotation_gate('y', np.pi / 256),    # ryp
+    rotation_gate('y', -np.pi / 256),   # ryn
+    rotation_gate('z', np.pi / 256),    # rzp
+    rotation_gate('z', -np.pi / 256)    # rzn
 ]
 
 def get_fixed_target_unitary():
@@ -46,7 +46,7 @@ class QuantumCompilerEnv(gym.Env):
         self.tolerance = tolerance
         self.action_space = spaces.Discrete(len(self.gate_set))
         self.observation_space = spaces.Box(low=-1, high=1, shape=(8+1,), dtype=np.float32)
-        self.max_steps = 130  # Updated to match the paper
+        self.max_steps = 260  # Adjust corresponding to the base
         self.reset()
     
     def reset(self, *, seed=None, options=None):
@@ -214,21 +214,21 @@ if __name__ == '__main__':
         env,
         policy_kwargs=policy_kwargs,
         learning_rate=0.0005,  
-        batch_size=1000,      
+        batch_size=10000,      
         train_freq=(1, 'episode'),
         exploration_initial_eps=1.0,
-        exploration_final_eps=0.05,
+        exploration_final_eps=0.02,
         # gamma= 0.99976,
         exploration_fraction=0.99976, 
-        learning_starts=5000,
-        target_update_interval=2000,
-        buffer_size=10000,
+        learning_starts=50000,
+        target_update_interval=20000,
+        buffer_size=100000,
         verbose=1,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=1000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=10000000, log_interval=100, callback=plotting_callback)
     
     success_rate = evaluate_agent(model, env)
     print(f'Success rate: {success_rate * 100:.2f}%')
