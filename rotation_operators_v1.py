@@ -125,7 +125,7 @@ def train_agent():
         device='cuda',  # Use 'cpu' if no GPU available
     )
 
-    model.learn(total_timesteps=1_000_000)
+    model.learn(total_timesteps=1000000)
     model.save("ppo_quantum_compiler")
     
 # Evaluation function
