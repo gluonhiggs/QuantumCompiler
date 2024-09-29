@@ -119,3 +119,93 @@ Resultant matrix after applying the gate sequence:
  [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
 Success rate: 100.00%
 ```
+```/usr/local/lib/python3.10/dist-packages/gymnasium/core.py:311: UserWarning: WARN: env.U_n to get variables from other wrappers is deprecated and will be removed in v1.0, to get this variable you can do `env.unwrapped.U_n` for environment variables or `env.get_wrapper_attr('U_n')` that will search the reminding wrappers.
+  logger.warn(
+/usr/local/lib/python3.10/dist-packages/gymnasium/core.py:311: UserWarning: WARN: env.target_U to get variables from other wrappers is deprecated and will be removed in v1.0, to get this variable you can do `env.unwrapped.target_U` for environment variables or `env.get_wrapper_attr('target_U')` that will search the reminding wrappers.
+  logger.warn(
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+/usr/local/lib/python3.10/dist-packages/gymnasium/core.py:311: UserWarning: WARN: env.tolerance to get variables from other wrappers is deprecated and will be removed in v1.0, to get this variable you can do `env.unwrapped.tolerance` for environment variables or `env.get_wrapper_attr('tolerance')` that will search the reminding wrappers.
+  logger.warn(
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+/usr/local/lib/python3.10/dist-packages/gymnasium/core.py:311: UserWarning: WARN: env.gate_set to get variables from other wrappers is deprecated and will be removed in v1.0, to get this variable you can do `env.unwrapped.gate_set` for environment variables or `env.get_wrapper_attr('gate_set')` that will search the reminding wrappers.
+  logger.warn(
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Final Fidelity: 0.9993493367877532
+Sequence Length: 77
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp']
+Resultant matrix after applying the gate sequence:
+[[ 0.78619538-0.4207379j  -0.10160515+0.44108143j]
+ [ 0.10160515+0.44108143j  0.78619538+0.4207379j ]]
+Success rate: 100.00%
+```
