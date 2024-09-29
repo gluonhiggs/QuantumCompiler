@@ -144,7 +144,7 @@ class PlottingCallback(BaseCallback):
 
         # Save plots if save_path is provided
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "test.png"))
+            plt.savefig(os.path.join(self.save_path, "fixed_target_dqn_v2.png"))
         plt.close()
 
 def evaluate_agent(model, env, num_episodes=10):
@@ -182,7 +182,7 @@ def evaluate_agent(model, env, num_episodes=10):
 
 
 if __name__ == '__main__':
-    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
+    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.999)
     env = Monitor(env)
     model = DQN(
         'MlpPolicy',
@@ -195,15 +195,15 @@ if __name__ == '__main__':
         exploration_final_eps=0.05,
         # gamma= 0.99976,
         exploration_fraction=0.99976, 
-        learning_starts=5000,
-        target_update_interval=2000,
-        buffer_size=10000,
+        learning_starts=50000,
+        target_update_interval=20000,
+        buffer_size=100000,
         verbose=1,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=8000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=80000000, log_interval=100, callback=plotting_callback)
     
     success_rate = evaluate_agent(model, env)
     print(f'Success rate: {success_rate * 100:.2f}%')

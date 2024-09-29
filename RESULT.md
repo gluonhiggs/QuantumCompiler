@@ -40,3 +40,82 @@ Resultant matrix after applying the gate sequence:
  [ 0.08707497+0.43601922j  0.78603125+0.42948813j]]
 Success rate: 100.00%
 ```
+
+```bash
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Final Fidelity: 0.9900179090775266
+Sequence Length: 67
+Successfully approximated the target unitary.
+Gate Sequence:
+['rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rxn', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rzp', 'rxn']
+Resultant matrix after applying the gate sequence:
+[[ 0.83613247-0.4020414j  -0.08853904+0.36249972j]
+ [ 0.08853904+0.36249972j  0.83613247+0.4020414j ]]
+Success rate: 100.00%
+```
