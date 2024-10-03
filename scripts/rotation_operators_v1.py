@@ -1,12 +1,14 @@
 import numpy as np
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 from stable_baselines3 import PPO
-import torch
+import torch.nn as nn
 import matplotlib.pyplot as plt
 import os
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.vec_env import SubprocVecEnv
+
 # Define the rotation gates
 def rotation_gate(axis, angle):
     if axis == 'x':
@@ -37,70 +39,105 @@ def get_haar_random_unitary():
     ph = d / np.abs(d)
     return q @ np.diag(ph)
 
+def make_env():
+    def _init():
+        env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
+        env = Monitor(env)  # Wrap each individual environment with Monitor
+        return env
+    return _init
+
 # Define the RL environment
 class QuantumCompilerEnv(gym.Env):
-    def __init__(self, gate_set, tolerance=0.99, max_steps=300):
+    def __init__(self, gate_set, tolerance=0.99):
         super(QuantumCompilerEnv, self).__init__()
         self.gate_set = gate_set
         self.tolerance = tolerance
-        self.max_steps = max_steps
         self.action_space = spaces.Discrete(len(gate_set))  # Select one of the rotation gates
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32)  # Real + Imaginary parts of the unitary
-        
+        self.observation_space = spaces.Box(low=-1.5, high=1.5, shape=(8,), dtype=np.float32)  # Adjusted bounds
+        self.max_steps = 300
         self.reset()
 
-    def reset(self):
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
         self.current_step = 0
-        self.U_n = np.eye(2, dtype=complex)  # Start with the identity matrix
+        self.U_n = np.eye(2, dtype=complex)
         self.target_U = get_haar_random_unitary()  # Haar-random target unitary
-        self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)  # Difference between current and target
-        return self._get_observation()
-
+        self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
+        return self._get_observation(), {}
+    
     def step(self, action):
         gate = self.gate_set[action]
-        self.U_n = np.dot(self.U_n, gate)  # Apply the selected gate
+        self.U_n = np.dot(self.U_n, gate)
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         reward = self._compute_reward()
         done = self._check_done()
+        obs = self._get_observation()
         self.current_step += 1
-        return self._get_observation(), reward, done, {}
+        info = {}
+        truncated = False
+        return obs, reward, done, truncated, info
 
     def _get_observation(self):
         obs = np.concatenate([self.O_n.real.flatten(), self.O_n.imag.flatten()])
         return obs.astype(np.float32)
 
     def _compute_reward(self):
+        L = self.max_steps
+        n = self.current_step
         fidelity = self.average_gate_fidelity(self.U_n, self.target_U)
+        distance = 1 - fidelity
+
         if fidelity >= self.tolerance:
-            reward = 100.0  # High reward for achieving the target
+            reward = (L - n) + 1  # Encourage shorter sequences
         else:
-            reward = -1.0  # Penalize for each step taken
+            reward = -distance / L
         return reward
 
     def _check_done(self):
         fidelity = self.average_gate_fidelity(self.U_n, self.target_U)
-        return fidelity >= self.tolerance or self.current_step >= self.max_steps
+        if fidelity >= self.tolerance or self.current_step >= self.max_steps:
+            return True
+        else:
+            return False
 
     def average_gate_fidelity(self, U, V):
-        d = 2
-        trace_U_dagger_V = np.trace(np.dot(np.conjugate(U.T), V))
-        fidelity = (1 / d**2) * np.abs(trace_U_dagger_V)**2
+        d = U.shape[0]
+        U_dagger = np.conjugate(U.T)
+        trace_U_dagger_V = np.trace(np.dot(U_dagger, V))
+        fidelity = (np.abs(trace_U_dagger_V)**2 + d) / (d * (d + 1))
         return fidelity
 
 class PlottingCallback(BaseCallback):
     def __init__(self, verbose=0, save_path=None):
         super(PlottingCallback, self).__init__(verbose)
+        self.save_path = save_path  # Path to save the plots
+        self.num_envs = None
+        self.current_rewards = None
+        self.current_lengths = None
         self.episode_rewards = []
         self.episode_lengths = []
-        self.save_path = save_path  # Path to save the plots
+
+    def _on_training_start(self):
+        self.num_envs = self.training_env.num_envs
+        self.current_rewards = np.zeros(self.num_envs)
+        self.current_lengths = np.zeros(self.num_envs)
 
     def _on_step(self) -> bool:
-        if self.locals.get('dones')[0]:  # 'dones' is a list
-            # Get the reward and episode length from the current episode
-            episode_info = self.locals.get('infos')[0].get('episode')
-            if episode_info is not None:
-                self.episode_rewards.append(episode_info['r'])
-                self.episode_lengths.append(episode_info['l'])
+        rewards = self.locals['rewards']
+        dones = self.locals['dones']
+
+        self.current_rewards += rewards
+        self.current_lengths += 1
+
+        for i in range(self.num_envs):
+            if dones[i]:
+                # Episode finished for environment i
+                self.episode_rewards.append(self.current_rewards[i])
+                self.episode_lengths.append(self.current_lengths[i])
+
+                # Reset the counters
+                self.current_rewards[i] = 0
+                self.current_lengths[i] = 0
         return True
 
     def _on_training_end(self) -> None:
@@ -127,7 +164,7 @@ class PlottingCallback(BaseCallback):
         # Save plots if a save path is provided
         if self.save_path:
             os.makedirs(self.save_path, exist_ok=True)  # Ensure directory exists
-            plt.savefig(os.path.join(self.save_path, "training_plots.png"))
+            plt.savefig(os.path.join(self.save_path, "rotation_operators_v1.png"))
 
         plt.close()
 
@@ -140,7 +177,8 @@ def evaluate_agent(model, env, num_episodes=10):
         while not done:
             action, _ = model.predict(obs, deterministic=True)
             gate_sequence.append(action)
-            obs, reward, done, _, _ = env.step(action)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
         fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
         sequence_length = len(gate_sequence)
         print(f"Final Fidelity: {fidelity}")
@@ -152,29 +190,35 @@ def evaluate_agent(model, env, num_episodes=10):
             gate_descriptions_list = [gate_descriptions[action] for action in gate_sequence]
             print("Gate Sequence:")
             print(gate_descriptions_list)
-            # Compute the resultant matrix after applying the gate sequence
-            U_S = np.eye(2, dtype=complex)
-            for gate in gate_sequence:
-                U_S = np.dot(U_S, env.gate_set[gate])
-            print("Resultant matrix after applying the gate sequence:")
-            print(U_S)
         else:
             print("Failed to approximate the target unitary.")
     success_rate = success_count / num_episodes
     return success_rate
 
+
+policy_kwargs = dict(
+    net_arch=[128, 128],
+    activation_fn=nn.SELU,
+)
+
 if __name__ == '__main__':
-    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
-    env = Monitor(env)
+    # Create 40 environments
+    num_envs = 40
+    envs = SubprocVecEnv([make_env() for _ in range(num_envs)])
     # Use the PPO algorithm for training
-    model = PPO('MlpPolicy', env, verbose=1)
+    model = PPO('MlpPolicy',
+                envs,
+                policy_kwargs=policy_kwargs,
+                learning_rate=0.0001,
+                batch_size=128,
+                verbose=1)
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
 
     # Train the model with the PlottingCallback
     model.learn(total_timesteps=8000000, log_interval=100, callback=plotting_callback)
 
-    # Evaluate the agent (optional, not related to plotting)
-    success_rate = evaluate_agent(model, env)
+    # Evaluate the agent
+    eval_env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
+    success_rate = evaluate_agent(model, eval_env)
     print(f'Success rate: {success_rate * 100:.2f}%')
-
