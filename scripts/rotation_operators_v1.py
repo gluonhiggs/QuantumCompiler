@@ -48,10 +48,11 @@ def make_env():
 
 # Define the RL environment
 class QuantumCompilerEnv(gym.Env):
-    def __init__(self, gate_set, tolerance=0.99):
+    def __init__(self, gate_set, tolerance=0.99, target_U=None):
         super(QuantumCompilerEnv, self).__init__()
         self.gate_set = gate_set
         self.tolerance = tolerance
+        self.target_U = target_U
         self.action_space = spaces.Discrete(len(gate_set))  # Select one of the rotation gates
         self.observation_space = spaces.Box(low=-1.5, high=1.5, shape=(8,), dtype=np.float32)  # Adjusted bounds
         self.max_steps = 300
@@ -61,7 +62,9 @@ class QuantumCompilerEnv(gym.Env):
         super().reset(seed=seed)
         self.current_step = 0
         self.U_n = np.eye(2, dtype=complex)
-        self.target_U = get_haar_random_unitary()  # Haar-random target unitary
+        # If a specific target_U is provided, use it; otherwise, generate a random one
+        if self.target_U is None:
+            self.target_U = get_haar_random_unitary()
         self.O_n = np.dot(np.linalg.inv(self.U_n), self.target_U)
         return self._get_observation(), {}
     
@@ -108,7 +111,7 @@ class QuantumCompilerEnv(gym.Env):
         return fidelity
 
 class PlottingCallback(BaseCallback):
-    def __init__(self, verbose=0, save_path=None):
+    def __init__(self, verbose=1, save_path=None):
         super(PlottingCallback, self).__init__(verbose)
         self.save_path = save_path  # Path to save the plots
         self.num_envs = None
@@ -168,31 +171,40 @@ class PlottingCallback(BaseCallback):
 
         plt.close()
 
-def evaluate_agent(model, env, num_episodes=10):
+def evaluate_agent(model, target_unitaries, env_class, num_episodes=10):
     success_count = 0
-    for _ in range(num_episodes):
-        obs, _ = env.reset()
-        done = False
-        gate_sequence = []
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            gate_sequence.append(action)
-            obs, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-        fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
-        sequence_length = len(gate_sequence)
-        print(f"Final Fidelity: {fidelity}")
-        print(f"Sequence Length: {sequence_length}")
-        if fidelity >= env.tolerance:
-            success_count += 1
-            print("Successfully approximated the target unitary.")
-            # Map action indices to gate descriptions
-            gate_descriptions_list = [gate_descriptions[action] for action in gate_sequence]
-            print("Gate Sequence:")
-            print(gate_descriptions_list)
-        else:
-            print("Failed to approximate the target unitary.")
-    success_rate = success_count / num_episodes
+    total_episodes = len(target_unitaries) * num_episodes
+    for target_U in target_unitaries:
+        env = env_class(gate_set=gate_matrices, tolerance=0.99, target_U=target_U)
+        for _ in range(num_episodes):
+            obs, _ = env.reset()
+            done = False
+            gate_sequence = []
+            while not done:
+                action, _ = model.predict(obs, deterministic=True)
+                gate_sequence.append(action)
+                obs, reward, terminated, truncated, _ = env.step(action)
+                done = terminated or truncated
+            fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
+            sequence_length = len(gate_sequence)
+            print(f"Final Fidelity: {fidelity}")
+            print(f"Sequence Length: {sequence_length}")
+            if fidelity >= env.tolerance:
+                success_count += 1
+                print("Successfully approximated the target unitary.")
+                # Map action indices to gate descriptions
+                gate_descriptions_list = [gate_descriptions[action] for action in gate_sequence]
+                print("Gate Sequence:")
+                print(gate_descriptions_list)
+                # Compute the resultant matrix after applying the gate sequence
+                U_S = np.eye(2, dtype=complex)
+                for gate in gate_sequence:
+                    U_S = np.dot(U_S, env.gate_set[gate])
+                print("Resultant matrix after applying the gate sequence:")
+                print(U_S)
+            else:
+                print("Failed to approximate the target unitary.")
+    success_rate = success_count / total_episodes
     return success_rate
 
 
@@ -211,14 +223,16 @@ if __name__ == '__main__':
                 policy_kwargs=policy_kwargs,
                 learning_rate=0.0001,
                 batch_size=128,
+                tensorboard_log="./data/ppo_tensorboard/",
                 verbose=1)
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
 
     # Train the model with the PlottingCallback
-    model.learn(total_timesteps=8000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=6000000, log_interval=100, callback=plotting_callback)
 
     # Evaluate the agent
-    eval_env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
-    success_rate = evaluate_agent(model, eval_env)
+    target_unitaries = [get_haar_random_unitary() for _ in range(10)]
+    eval_env_class = QuantumCompilerEnv
+    success_rate = evaluate_agent(model,target_unitaries,eval_env_class)
     print(f'Success rate: {success_rate * 100:.2f}%')
