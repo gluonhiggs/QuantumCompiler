@@ -8,7 +8,7 @@ The paper presents the following problems:
 
 [x] Training neural networks for approximate a single-qubit gate
 
-[] Quantum compiling by rotation operators
+[x] Quantum compiling by rotation operators
 
 [] Quantum compiling by the HRC efficiently universal base of gates
 
