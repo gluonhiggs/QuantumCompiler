@@ -138,6 +138,10 @@ class PlottingCallback(BaseCallback):
                 self.episode_rewards.append(self.current_rewards[i])
                 self.episode_lengths.append(self.current_lengths[i])
 
+                if self.verbose > 0:
+                    print(f"Env {i}: Episode {self.episode_count}, Reward: {self.current_rewards[i]}, Length: {self.current_lengths[i]}, Total Timesteps: {self.total_timesteps}")
+
+
                 # Reset the counters
                 self.current_rewards[i] = 0
                 self.current_lengths[i] = 0
