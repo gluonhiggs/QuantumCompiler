@@ -167,7 +167,7 @@ class PlottingCallback(BaseCallback):
         # Save plots if a save path is provided
         if self.save_path:
             os.makedirs(self.save_path, exist_ok=True)  # Ensure directory exists
-            plt.savefig(os.path.join(self.save_path, "rotation_operators_v1.png"))
+            plt.savefig(os.path.join(self.save_path, "rotation_operators_v2.png"))
 
         plt.close()
 
