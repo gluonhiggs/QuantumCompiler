@@ -119,15 +119,19 @@ class PlottingCallback(BaseCallback):
         self.current_lengths = None
         self.episode_rewards = []
         self.episode_lengths = []
+        self.episode_count = 0  # To track episode count
+        self.total_timesteps = 0 
 
     def _on_training_start(self):
         self.num_envs = self.training_env.num_envs
         self.current_rewards = np.zeros(self.num_envs)
         self.current_lengths = np.zeros(self.num_envs)
+        self.total_timesteps = 0
 
     def _on_step(self) -> bool:
         rewards = self.locals['rewards']
         dones = self.locals['dones']
+        self.total_timesteps += self.locals['n_steps']
 
         self.current_rewards += rewards
         self.current_lengths += 1
@@ -135,11 +139,12 @@ class PlottingCallback(BaseCallback):
         for i in range(self.num_envs):
             if dones[i]:
                 # Episode finished for environment i
+                self.episode_count += 1
                 self.episode_rewards.append(self.current_rewards[i])
                 self.episode_lengths.append(self.current_lengths[i])
 
                 if self.verbose > 0:
-                    print(f"Env {i}: Episode {self.episode_count}, Reward: {self.current_rewards[i]}, Length: {self.current_lengths[i]}, Total Timesteps: {self.total_timesteps}")
+                    print(f"Env {i}: Episode {self.episode_count}, Reward: {self.current_rewards[i]}, Length: {self.current_lengths[i]}, Timesteps per Total Timesteps: {self.total_timesteps}")
 
 
                 # Reset the counters
@@ -233,7 +238,7 @@ if __name__ == '__main__':
     plotting_callback = PlottingCallback(save_path='./data')
 
     # Train the model with the PlottingCallback
-    model.learn(total_timesteps=8000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=7000000, log_interval=100, callback=plotting_callback)
 
     # Evaluate the agent
     target_unitaries = [get_haar_random_unitary() for _ in range(10)]
