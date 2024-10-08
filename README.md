@@ -46,6 +46,8 @@ Similarly for other problems. You can try to run different scripts to see how th
 
 Training progress plots for each script are stored in the `data/` directory. Logs and results are captured and summarized to [RESULTS.md](RESULT.md) file.
 
+**If you find this project helpful, please consider giving it a ⭐. I appreciate that!**
+
 ## Authors
 
 Duong H. D. Tran
