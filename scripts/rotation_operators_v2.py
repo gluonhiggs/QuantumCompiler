@@ -225,6 +225,7 @@ policy_kwargs = dict(
 if __name__ == '__main__':
     # Create 40 environments
     num_envs = 40
+    agent_steps = 1000000
     envs = SubprocVecEnv([make_env() for _ in range(num_envs)])
     # Use the PPO algorithm for training
     model = PPO('MlpPolicy',
@@ -238,7 +239,7 @@ if __name__ == '__main__':
     plotting_callback = PlottingCallback(save_path='./data')
 
     # Train the model with the PlottingCallback
-    model.learn(total_timesteps=7000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=num_envs*agent_steps, log_interval=100, callback=plotting_callback)
 
     # Evaluate the agent
     target_unitaries = [get_haar_random_unitary() for _ in range(10)]
