@@ -208,12 +208,13 @@ def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_r
     env = env_class(gate_set=gate_matrices, tolerance=0.99)
     with open(output_file, 'w') as f:
         for idx, target_U in enumerate(tqdm(target_unitaries, desc="Evaluating")):
-            obs, _ = env.reset(target_U=target_U)
+            env.target_U = target_U 
+            obs, _ = env.reset()
             done = False
             gate_sequence = []
             while not done:
                 action, _ = model.predict(obs, deterministic=True)
-                gate_sequence.append(action)
+                gate_sequence.append(gate_descriptions[action])
                 obs, reward, terminated, truncated, _ = env.step(action)
                 done = terminated or truncated
             fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
@@ -226,7 +227,7 @@ def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_r
                 'index': idx,
                 'fidelity': fidelity,
                 'sequence_length': sequence_length,
-                'success': success,
+                'success': bool(success),
                 'gate_sequence': gate_sequence,
                 # Include matrices in human-readable format
                 'target_U': matrix_to_readable_string(env.target_U),
@@ -269,10 +270,6 @@ if __name__ == '__main__':
     
     # Train the model with the PlottingCallback
     model.learn(total_timesteps=agent_steps, log_interval=100, callback=plotting_callback)
-    
-    # Save the model and the VecNormalize statistics
-    model.save("ppo_quantum_compiler")
-    envs.save("vecnormalize_quantum_compiler.pkl")
     
     # Evaluate the agent
     num_test_targets = 1000000  # Testing with 1 million targets
