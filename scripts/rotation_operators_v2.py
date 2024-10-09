@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 import os
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
+import json
+from tqdm import tqdm
 
 # Define the rotation gates
 def rotation_gate(axis, angle):
@@ -54,7 +56,7 @@ class QuantumCompilerEnv(gym.Env):
         self.tolerance = tolerance
         self.target_U = target_U
         self.action_space = spaces.Discrete(len(gate_set))  # Select one of the rotation gates
-        self.observation_space = spaces.Box(low=-1.5, high=1.5, shape=(8,), dtype=np.float32)  # Adjusted bounds
+        self.observation_space = spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32)  # Adjusted bounds
         self.max_steps = 300
         self.reset()
 
@@ -94,6 +96,8 @@ class QuantumCompilerEnv(gym.Env):
             reward = (L - n) + 1  # Encourage shorter sequences
         else:
             reward = -distance / L
+        # consider reshape the reward by adding a new penalty term (e.g. -0.01 to prevent taking more steps)
+        # reward -= 0.01
         return reward
 
     def _check_done(self):
@@ -180,13 +184,31 @@ class PlottingCallback(BaseCallback):
 
         plt.close()
 
-def evaluate_agent(model, target_unitaries, env_class, num_episodes=10):
+def matrix_to_readable_string(matrix, precision=9):
+    """Convert a complex matrix to a human-readable string."""
+    lines = []
+    for row in matrix:
+        row_str = '['
+        for elem in row:
+            real_part = f"{elem.real:.{precision}f}"
+            imag_part = f"{elem.imag:.{precision}f}"
+            if elem.imag >= 0:
+                elem_str = f"{real_part}+{imag_part}j"
+            else:
+                elem_str = f"{real_part}{imag_part}j"
+            row_str += f"{elem_str}, "
+        row_str = row_str.rstrip(', ') + ']'
+        lines.append(row_str)
+    return '\n'.join(lines)
+
+def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_results.jsonl'):
     success_count = 0
-    total_episodes = len(target_unitaries) * num_episodes
-    for target_U in target_unitaries:
-        env = env_class(gate_set=gate_matrices, tolerance=0.99, target_U=target_U)
-        for _ in range(num_episodes):
-            obs, _ = env.reset()
+    total_episodes = len(target_unitaries)
+    # Create a single environment instance
+    env = env_class(gate_set=gate_matrices, tolerance=0.99)
+    with open(output_file, 'w') as f:
+        for idx, target_U in enumerate(tqdm(target_unitaries, desc="Evaluating")):
+            obs, _ = env.reset(target_U=target_U)
             done = False
             gate_sequence = []
             while not done:
@@ -196,24 +218,24 @@ def evaluate_agent(model, target_unitaries, env_class, num_episodes=10):
                 done = terminated or truncated
             fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
             sequence_length = len(gate_sequence)
-            print(f"Final Fidelity: {fidelity}")
-            print(f"Sequence Length: {sequence_length}")
-            if fidelity >= env.tolerance:
+            success = fidelity >= env.tolerance
+            if success:
                 success_count += 1
-                print("Successfully approximated the target unitary.")
-                # Map action indices to gate descriptions
-                gate_descriptions_list = [gate_descriptions[action] for action in gate_sequence]
-                print("Gate Sequence:")
-                print(gate_descriptions_list)
-                # Compute the resultant matrix after applying the gate sequence
-                U_S = np.eye(2, dtype=complex)
-                for gate in gate_sequence:
-                    U_S = np.dot(U_S, env.gate_set[gate])
-                print("Resultant matrix after applying the gate sequence:")
-                print(U_S)
-            else:
-                print("Failed to approximate the target unitary.")
+            # Prepare the result entry
+            result = {
+                'index': idx,
+                'fidelity': fidelity,
+                'sequence_length': sequence_length,
+                'success': success,
+                'gate_sequence': gate_sequence,
+                # Include matrices in human-readable format
+                'target_U': matrix_to_readable_string(env.target_U),
+                'approximate_U': matrix_to_readable_string(env.U_n)
+            }
+            # Write the result entry as a JSON line
+            f.write(json.dumps(result) + '\n')
     success_rate = success_count / total_episodes
+    print(f'Success rate: {success_rate * 100:.2f}%')
     return success_rate
 
 
@@ -223,26 +245,38 @@ policy_kwargs = dict(
 )
 
 if __name__ == '__main__':
-    # Create 40 environments
-    num_envs = 40
+    # Set random seeds for reproducibility
+    import torch
+    torch.manual_seed(42)
+    np.random.seed(42)
+    
+    # Create environments and normalize observations
+    num_envs = 40  # Adjusted number of environments
     agent_steps = 1000000
     envs = SubprocVecEnv([make_env() for _ in range(num_envs)])
-    # Use the PPO algorithm for training
+    # envs = VecNormalize(envs, norm_obs=True, norm_reward=False, clip_obs=10.)
+    
+    # Define the PPO model
     model = PPO('MlpPolicy',
                 envs,
                 policy_kwargs=policy_kwargs,
-                learning_rate=0.0001,
+                learning_rate=1e-4,
                 batch_size=128,
-                tensorboard_log="./data/ppo_tensorboard/",
+                ent_coef=0.01,
                 verbose=1)
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
-
+    
     # Train the model with the PlottingCallback
-    model.learn(total_timesteps=num_envs*agent_steps, log_interval=100, callback=plotting_callback)
-
+    model.learn(total_timesteps=agent_steps, log_interval=100, callback=plotting_callback)
+    
+    # Save the model and the VecNormalize statistics
+    model.save("ppo_quantum_compiler")
+    envs.save("vecnormalize_quantum_compiler.pkl")
+    
     # Evaluate the agent
-    target_unitaries = [get_haar_random_unitary() for _ in range(10)]
+    num_test_targets = 1000000  # Testing with 1 million targets
+    target_unitaries = [get_haar_random_unitary() for _ in range(num_test_targets)]
     eval_env_class = QuantumCompilerEnv
-    success_rate = evaluate_agent(model,target_unitaries,eval_env_class)
+    success_rate = evaluate_agent(model, target_unitaries, eval_env_class, output_file='evaluation_results.jsonl')
     print(f'Success rate: {success_rate * 100:.2f}%')
