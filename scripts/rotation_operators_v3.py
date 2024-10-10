@@ -265,6 +265,7 @@ if __name__ == '__main__':
                 learning_rate=1e-4,
                 batch_size=256,
                 ent_coef=0.01,
+                device='cuda',
                 verbose=1)
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')

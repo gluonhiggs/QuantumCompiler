@@ -263,7 +263,7 @@ if __name__ == '__main__':
                 policy_kwargs=policy_kwargs,
                 learning_rate=1e-4,
                 batch_size=128,
-                ent_coef=0.01,
+                ent_coef=0.001,
                 device='cuda',
                 verbose=1)
     # Define the custom plotting callback
