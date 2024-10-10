@@ -253,7 +253,7 @@ if __name__ == '__main__':
     
     # Create environments and normalize observations
     num_envs = 40  # Adjusted number of environments
-    agent_steps = 1200000
+    agent_steps = 1500000
     envs = SubprocVecEnv([make_env() for _ in range(num_envs)])
     # envs = VecNormalize(envs, norm_obs=True, norm_reward=False, clip_obs=10.)
     
@@ -263,7 +263,7 @@ if __name__ == '__main__':
                 policy_kwargs=policy_kwargs,
                 learning_rate=1e-4,
                 batch_size=128,
-                ent_coef=0.001,
+                # ent_coef=0.001,
                 device='cuda',
                 verbose=1)
     # Define the custom plotting callback
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     model.learn(total_timesteps=agent_steps, log_interval=100, callback=plotting_callback)
     
     # Evaluate the agent
-    num_test_targets = 10000  # Testing with 1 million targets
+    num_test_targets = 1000  # Testing with 1 million targets
     target_unitaries = [get_haar_random_unitary() for _ in range(num_test_targets)]
     eval_env_class = QuantumCompilerEnv
     success_rate = evaluate_agent(model, target_unitaries, eval_env_class, output_file='evaluation_results.jsonl')
