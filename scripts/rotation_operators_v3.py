@@ -254,7 +254,7 @@ if __name__ == '__main__':
     
     # Create environments and normalize observations
     num_envs = 40  # Adjusted number of environments
-    agent_steps = 2000000
+    agent_steps = 1000000
     envs = SubprocVecEnv([make_env() for _ in range(num_envs)])
     # envs = VecNormalize(envs, norm_obs=True, norm_reward=False, clip_obs=10.)
     
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     plotting_callback = PlottingCallback(save_path='./data')
     
     # Train the model with the PlottingCallback
-    model.learn(total_timesteps=agent_steps, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=agent_steps*num_envs, log_interval=100, callback=plotting_callback)
     
     # Evaluate the agent
     num_test_targets = 10000  # Testing with 1 million targets

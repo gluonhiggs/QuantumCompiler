@@ -270,7 +270,7 @@ if __name__ == '__main__':
     plotting_callback = PlottingCallback(save_path='./data')
     
     # Train the model with the PlottingCallback
-    model.learn(total_timesteps=agent_steps, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=agent_steps*num_envs, log_interval=100, callback=plotting_callback)
     
     # Evaluate the agent
     num_test_targets = 1000  # Testing with 1 million targets
