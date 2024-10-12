@@ -9,3 +9,8 @@ def get_haar_random_unitary():
 # Get the Haar random unitary matrix
 U = get_haar_random_unitary()
 print(U)
+
+# Check if U is unitary
+is_unitary = np.allclose(U @ U.conj().T, np.eye(2))
+print(U @ U.conj().T)
+print(is_unitary)

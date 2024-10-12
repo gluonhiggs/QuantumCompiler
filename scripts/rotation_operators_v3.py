@@ -218,6 +218,12 @@ def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_r
                 gate_sequence.append(gate_descriptions[action])
                 obs, reward, terminated, truncated, _ = env.step(action)
                 done = terminated or truncated
+            # Recompute approximate_U from gate_sequence
+            approximate_U = np.eye(2, dtype=complex)
+            for action in gate_sequence:
+                gate = env.gate_set[action]
+                approximate_U = np.dot(approximate_U, gate)
+
             fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
             sequence_length = len(gate_sequence)
             success = fidelity >= env.tolerance
@@ -232,7 +238,7 @@ def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_r
                 'gate_sequence': gate_sequence,
                 # Include matrices in human-readable format
                 'target_U': matrix_to_readable_string(env.target_U),
-                'approximate_U': matrix_to_readable_string(env.U_n)
+                'approximate_U': matrix_to_readable_string(approximate_U)
             }
             # Write the result entry as a JSON line
             f.write(json.dumps(result) + '\n')
