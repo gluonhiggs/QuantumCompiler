@@ -98,7 +98,7 @@ class QuantumCompilerEnv(gym.Env):
         else:
             reward = -distance / L
         # consider reshape the reward by adding a new penalty term (e.g. -0.001 to prevent taking more steps)
-        reward -= 0.1
+        # reward -= 0.1
         return reward
 
     def _check_done(self):
