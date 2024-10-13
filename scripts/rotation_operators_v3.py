@@ -215,7 +215,7 @@ def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_r
     total_episodes = len(target_unitaries)
     # Create a single environment instance
     env = env_class(gate_set=gate_matrices, tolerance=0.99)
-    buffer_size = 20
+    buffer_size = 100
     buffer = []
     with open(output_file, 'w', buffering=8192) as f:
         for idx, target_U in enumerate(tqdm(target_unitaries, desc="Evaluating")):
