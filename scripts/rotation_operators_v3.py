@@ -97,8 +97,8 @@ class QuantumCompilerEnv(gym.Env):
             reward = (L - n) + 1  # Encourage shorter sequences
         else:
             reward = -distance / L
-        # consider reshape the reward by adding a new penalty term (e.g. -0.01 to prevent taking more steps)
-        reward -= 0.001
+        # consider reshape the reward by adding a new penalty term (e.g. -0.001 to prevent taking more steps)
+        reward -= 0.1
         return reward
 
     def _check_done(self):
@@ -162,7 +162,10 @@ class PlottingCallback(BaseCallback):
 
         # Plotting episode rewards over time
         plt.subplot(1, 2, 1)
-        plt.plot(self.episode_rewards, label="Episode Reward")
+        plt.plot(self.episode_rewards, 
+                 linestyle='None',
+                 marker='.',
+                 label="Episode Reward")
         plt.title("Episode Rewards Over Time")
         plt.xlabel("Episode")
         plt.ylabel("Reward")
@@ -170,7 +173,11 @@ class PlottingCallback(BaseCallback):
 
         # Plotting episode lengths over time
         plt.subplot(1, 2, 2)
-        plt.plot(self.episode_lengths, label="Episode Length", color='orange')
+        plt.plot(self.episode_lengths, 
+                linestyle='None',
+                marker='.',
+                color='orange',
+                label="Episode Length")
         plt.title("Episode Length Over Time")
         plt.xlabel("Episode")
         plt.ylabel("Length")
@@ -200,14 +207,17 @@ def matrix_to_readable_string(matrix, precision=9):
             row_str += f"{elem_str}, "
         row_str = row_str.rstrip(', ') + ']'
         lines.append(row_str)
-    return '\n'.join(lines)
+    return ''.join(lines)
 
+    
 def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_results_v3.jsonl'):
     success_count = 0
     total_episodes = len(target_unitaries)
     # Create a single environment instance
     env = env_class(gate_set=gate_matrices, tolerance=0.99)
-    with open(output_file, 'w') as f:
+    buffer_size = 20
+    buffer = []
+    with open(output_file, 'w', buffering=8192) as f:
         for idx, target_U in enumerate(tqdm(target_unitaries, desc="Evaluating")):
             env.target_U = target_U 
             obs, _ = env.reset()
@@ -215,35 +225,38 @@ def evaluate_agent(model, target_unitaries, env_class, output_file='evaluation_r
             gate_sequence = []
             while not done:
                 action, _ = model.predict(obs, deterministic=True)
-                gate_sequence.append(gate_descriptions[action])
+                gate_sequence.append(action)
                 obs, reward, terminated, truncated, _ = env.step(action)
                 done = terminated or truncated
             # Recompute approximate_U from gate_sequence
-            approximate_U = np.eye(2, dtype=complex)
-            for action in gate_sequence:
-                gate = env.gate_set[action]
-                approximate_U = np.dot(approximate_U, gate)
-
             fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
-            sequence_length = len(gate_sequence)
             success = fidelity >= env.tolerance
             if success:
                 success_count += 1
-            # Prepare the result entry
+            sequence_length = len(gate_sequence)
+            approximate_U = np.eye(2, dtype=complex)
+            gate_descriptions_list = []
+            for action in gate_sequence:
+                gate = env.gate_set[action]
+                gate_descriptions_list.append(gate_descriptions[action])
+                approximate_U = np.dot(approximate_U, gate)
             result = {
                 'index': idx,
                 'fidelity': fidelity,
-                'sequence_length': sequence_length,
                 'success': bool(success),
-                'gate_sequence': gate_sequence,
-                # Include matrices in human-readable format
+                'sequence_length': sequence_length,
+                'gate_sequence': gate_descriptions_list,
                 'target_U': matrix_to_readable_string(env.target_U),
                 'approximate_U': matrix_to_readable_string(approximate_U)
             }
-            # Write the result entry as a JSON line
-            f.write(json.dumps(result) + '\n')
+            buffer.append(json.dumps(result))
+            if len(buffer) >= buffer_size:
+                f.write('\n'.join(buffer) + '\n')  # Write all results in buffer
+                buffer.clear()
+        if buffer:
+            f.write('\n'.join(buffer) + '\n')  # Write remaining results in buffer
+
     success_rate = success_count / total_episodes
-    print(f'Success rate: {success_rate * 100:.2f}%')
     return success_rate
 
 
@@ -269,9 +282,9 @@ if __name__ == '__main__':
                 envs,
                 policy_kwargs=policy_kwargs,
                 learning_rate=1e-4,
-                batch_size=256,
+                batch_size=128,
                 ent_coef=0.01,
-                device='cuda',
+                # device='cuda',
                 verbose=1)
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
@@ -280,7 +293,7 @@ if __name__ == '__main__':
     model.learn(total_timesteps=agent_steps*num_envs, log_interval=100, callback=plotting_callback)
     
     # Evaluate the agent
-    num_test_targets = 10000  # Testing with 1 million targets
+    num_test_targets = 10000# Testing with 1 million targets
     target_unitaries = [get_haar_random_unitary() for _ in range(num_test_targets)]
     eval_env_class = QuantumCompilerEnv
     success_rate = evaluate_agent(model, target_unitaries, eval_env_class, output_file='evaluation_results_v3.jsonl')
