@@ -95,7 +95,7 @@ class QuantumCompilerEnv(gym.Env):
     def average_gate_fidelity(self, U, V):
         diff = U - V
         norm = np.linalg.norm(diff, ord=2)  # Spectral norm
-        return norm
+        return 1 - norm
 
 
 
