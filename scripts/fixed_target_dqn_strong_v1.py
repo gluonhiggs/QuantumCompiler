@@ -142,10 +142,10 @@ class PlottingCallback(BaseCallback):
 
         # Save plots if save_path is provided
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "test.png"))
+            plt.savefig(os.path.join(self.save_path, "dqn_strong_v1.png"))
         plt.close()
 
-def evaluate_agent(model, env, num_episodes=10):
+def evaluate_agent(model, env, num_episodes=1):
     success_count = 0
     for _ in range(num_episodes):
         obs, _ = env.reset()
