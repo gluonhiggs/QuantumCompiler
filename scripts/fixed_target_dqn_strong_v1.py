@@ -94,8 +94,9 @@ class QuantumCompilerEnv(gym.Env):
     
     def average_gate_fidelity(self, U, V):
         diff = U - V
-        norm = np.linalg.norm(diff, ord=2)  # Spectral norm
-        return 1 - norm
+        singular_values = np.linalg.svd(diff, compute_uv=False)
+        pseudo_fidelity = 1 - np.max(singular_values)
+        return pseudo_fidelity
 
 
 
@@ -180,7 +181,7 @@ def evaluate_agent(model, env, num_episodes=1):
 
 
 if __name__ == '__main__':
-    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
+    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.9)
     env = Monitor(env)
     model = DQN(
         'MlpPolicy',
