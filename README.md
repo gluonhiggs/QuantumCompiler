@@ -1,6 +1,10 @@
 # QuantumCompiler
 
-This is a repository for the Quantum Compiler project. The goal of this project is to **reproduce the results** of the paper [Quantum compiling by deep reinforcement learning](https://www.nature.com/articles/s42005-021-00684-3#ref-CR7). The paper presents a quantum compiler that uses deep reinforcement learning to optimize the compilation of quantum circuits.
+This is a repository for the Quantum Compiler project. 
+
+The initial goal of this project is to **reproduce the results** of the paper [Quantum compiling by deep reinforcement learning](https://www.nature.com/articles/s42005-021-00684-3#ref-CR7). The paper presents a quantum compiler that uses deep reinforcement learning to optimize the compilation of quantum circuits.
+
+With the success of reproducing the results, we will extend the project to solve more problems. The next target is to explore what we can do with this paper [Quantum Compiling with Reinforcement Learning on a Superconducting Processor](https://arxiv.org/pdf/2406.12195)
 
 ## Problems
 
@@ -11,6 +15,8 @@ The paper presents the following problems:
 [x] Quantum compiling by rotation operators
 
 [] Quantum compiling by the HRC efficiently universal base of gates
+
+[] Generalization to multi-qubit gates
 
 Note: [x] means the problem has been solved.
 ## Setup and Usage
