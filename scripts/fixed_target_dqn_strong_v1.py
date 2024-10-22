@@ -82,7 +82,7 @@ class QuantumCompilerEnv(gym.Env):
         if distance < (1 - self.tolerance):
             reward = (L - n) + 1
         else:
-            reward = -distance / L
+            reward = - distance / L
         return reward
 
     def _check_done(self):
@@ -146,7 +146,7 @@ class PlottingCallback(BaseCallback):
             plt.savefig(os.path.join(self.save_path, "dqn_strong_v1.png"))
         plt.close()
 
-def evaluate_agent(model, env, num_episodes=1):
+def evaluate_agent(model, env, num_episodes=10):
     success_count = 0
     for _ in range(num_episodes):
         obs, _ = env.reset()
@@ -181,7 +181,7 @@ def evaluate_agent(model, env, num_episodes=1):
 
 
 if __name__ == '__main__':
-    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.9)
+    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
     env = Monitor(env)
     model = DQN(
         'MlpPolicy',
@@ -194,15 +194,15 @@ if __name__ == '__main__':
         exploration_final_eps=0.05,
         # gamma= 0.99976,
         exploration_fraction=0.99976, 
-        learning_starts=5000,
-        target_update_interval=2000,
-        buffer_size=10000,
+        learning_starts=500000,
+        target_update_interval=20000,
+        buffer_size=100000,
         verbose=1,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     # Define the custom plotting callback
     plotting_callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=8000000, log_interval=100, callback=plotting_callback)
+    model.learn(total_timesteps=10000000, log_interval=100, callback=plotting_callback)
     
     success_rate = evaluate_agent(model, env)
     print(f'Success rate: {success_rate * 100:.2f}%')
