@@ -80,7 +80,7 @@ class QuantumCompilerEnv(gym.Env):
         distance = 1 - fidelity
         
         if distance < (1 - self.tolerance):
-            reward = (L - n) + 1
+            reward = 2*(L - n) + 1
         else:
             reward = - distance / L
         return reward
@@ -181,7 +181,7 @@ def evaluate_agent(model, env, num_episodes=10):
 
 
 if __name__ == '__main__':
-    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.99)
+    env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.98)
     env = Monitor(env)
     model = DQN(
         'MlpPolicy',
