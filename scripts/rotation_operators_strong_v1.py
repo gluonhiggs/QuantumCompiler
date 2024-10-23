@@ -109,11 +109,10 @@ class QuantumCompilerEnv(gym.Env):
             return False
 
     def average_gate_fidelity(self, U, V):
-        d = U.shape[0]
-        U_dagger = np.conjugate(U.T)
-        trace_U_dagger_V = np.trace(np.dot(U_dagger, V))
-        fidelity = (np.abs(trace_U_dagger_V)**2 + d) / (d * (d + 1))
-        return fidelity
+        diff = U - V
+        singular_values = np.linalg.svd(diff, compute_uv=False)
+        pseudo_fidelity = 1 - np.max(singular_values)
+        return pseudo_fidelity
 
 class PlottingCallback(BaseCallback):
     def __init__(self, verbose=1, save_path=None):
