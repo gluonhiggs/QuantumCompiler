@@ -14,7 +14,7 @@ I'm going to solve following problems:
 
 [x] Quantum compiling by rotation operators
 
-[] Quantum compiling by rotation operators using singular value constrainsts
+[] Quantum compiling by rotation operators using singular value constraints
 
 [] Quantum compiling by the HRC efficiently universal base of gates
 
