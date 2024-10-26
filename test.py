@@ -1,41 +1,33 @@
 import numpy as np
+def rotation_gate(axis, angle):
+    if axis == 'x':
+        return np.array([[np.cos(angle / 2), -1j * np.sin(angle / 2)],
+                         [-1j * np.sin(angle / 2), np.cos(angle / 2)]], dtype=complex)
+    elif axis == 'y':
+        return np.array([[np.cos(angle / 2), -np.sin(angle / 2)],
+                         [np.sin(angle / 2), np.cos(angle / 2)]], dtype=complex)
+    elif axis == 'z':
+        return np.array([[np.exp(-1j * angle / 2), 0],
+                         [0, np.exp(1j * angle / 2)]], dtype=complex)
 
-# Set a fixed random seed for reproducibility
-np.random.seed(42)
+gate_descriptions = ["rxp", "rxn", "ryp", "ryn", "rzp", "rzn"]
+gate_matrices = [
+    rotation_gate('x', np.pi / 128),    # rxp
+    rotation_gate('x', -np.pi / 128),   # rxn
+    rotation_gate('y', np.pi / 128),    # ryp
+    rotation_gate('y', -np.pi / 128),   # ryn
+    rotation_gate('z', np.pi / 128),    # rzp
+    rotation_gate('z', -np.pi / 128)    # rzn
+]
 
-# Create a very long vector with very small values and normalize it to have a norm of 1
-vector = np.random.rand(100000) * 1e-15
-long_vector_float64 = vector.astype(np.float64)
-# long_vector_float64 /= np.linalg.norm(long_vector_float64)  # Normalize to have norm 1
-long_vector_float128 = vector.astype(np.float128)
-# long_vector_float128 /= np.linalg.norm(long_vector_float128)
-print(f"Long vector (float64): {long_vector_float64[:10]}")  # Print the first 10 elements for comparison
-print(f"Long vector (float128): {long_vector_float128[:10]}")  # Print the first 10 elements for comparison
+sequence = ["ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "ryn", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "rzp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "ryp", "rxn", "ryp", "rzn", "ryp", "rzn", "ryp", "rzn", "ryp", "rzn", "ryp", "rxn", "rzn", "rzn", "ryp", "rzn", "ryp", "rzn", "ryp", "rzn", "rxn", "rzn", "rzn", "ryp", "rzn", "rzn", "ryp", "rxn", "rzn", "rzn", "rzn", "rzn", "ryp", "rzn", "rxn", "rzn", "rzn", "rzn", "rzn", "rxn", "rzn", "rzn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rzn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rxn", "rzn", "rzn", "rxn", "rzn", "rxn", "rzn", "rxn", "rzn", "rxn", "rzn", "rzn"]
 
-matrix_rows = 10000
-matrix_cols = 100000
-chunk_size = 1000
-result_float64 = np.zeros(matrix_rows, dtype=np.float64)
-result_float128 = np.zeros(matrix_rows, dtype=np.float128)
-for i in range(0, matrix_cols, chunk_size):
-    # Select a chunk of the matrix and corresponding vector elements
-    matrix_chunk = np.random.rand(matrix_rows, chunk_size)
-    matrix_chunk64 = matrix_chunk.astype(np.float64) * 1e-2
-    matrix_chunk128 = matrix_chunk.astype(np.float128) * 1e-2
-    if i < 10:
-        print(f"matrix chunk 64 {matrix_chunk64[0][:10]}")
-        print(f"matrix chunk 128 {matrix_chunk128[0][:10]}")
-        print(f"matrix chunk {matrix_chunk[0][:10]}")
-    vector_chunk64 = long_vector_float64[i:i + chunk_size]
-    vector_chunk128 = long_vector_float128[i:i + chunk_size]
-    result_float64 += np.dot(matrix_chunk, vector_chunk64)
-    result_float128 += np.dot(matrix_chunk, vector_chunk128)
+# Calculate the product of the matrices in the sequence
+result = np.eye(2)
+for gate in sequence:
+    print(gate_descriptions.index(gate))
+    print(gate_matrices[gate_descriptions.index(gate)])
+    result = np.dot(gate_matrices[gate_descriptions.index(gate)], result)
 
-# Now compare the results
-print("Result (float64):", result_float64[:10])  # Print the first 10 results for comparison
-print("Result (float128):", result_float128[:10])  # Print the first 10 results for comparison
-
-# Check the difference between the two results
-difference = np.abs(result_float128 - result_float64)
-print("Maximum difference between float64 and float128 results:", np.max(difference))
-print("Average difference between float64 and float128 results:", np.mean(difference))
+# Print the result
+print(result)
