@@ -98,8 +98,6 @@ class QuantumCompilerEnv(gym.Env):
         pseudo_fidelity = 1 - np.max(singular_values)
         return pseudo_fidelity
 
-
-
 policy_kwargs = dict(
     net_arch=[128, 128],
     activation_fn=nn.SELU,
