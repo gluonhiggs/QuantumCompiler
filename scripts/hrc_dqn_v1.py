@@ -218,13 +218,11 @@ class PlottingCallback(BaseCallback):
             plt.savefig(os.path.join(self.save_path, f"{filename}.png"))
         plt.close()
 
-def evaluate_agent(model, env, num_episodes=1, target_U=None):
+def evaluate_agent(model, env, num_episodes=1):
     success_count = 0
     total_length = 0
     for _ in tqdm(range(num_episodes), desc="Evaluating"):
-        # Generate a new target unitary if not provided
-        if target_U is None:
-            target_U = get_haar_random_unitary()
+        target_U = get_haar_random_unitary()
         # Set the target in the environment
         env.set_target_unitary(target_U)
         obs, _ = env.reset()
@@ -295,8 +293,6 @@ if __name__ == '__main__':
     total_timesteps = 10000 # Adjust based on your computational resources
     model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
     
-    # Evaluate the model on a specific target unitary
-    specific_target = get_haar_random_unitary()  # Or define your own unitary
-    success_rate, average_length = evaluate_agent(model, env, num_episodes=1, target_U=specific_target)
+    success_rate, average_length = evaluate_agent(model, env, num_episodes=10)
     print(f"Success Rate: {success_rate*100:.2f}%, Average Length: {average_length:.2f}")
 
