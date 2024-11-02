@@ -1,11 +1,11 @@
-import os
+import numpy as np
+V1 = (1/np.sqrt(5)) * np.array([[1, 2j],
+                                    [2j, 1]], dtype=complex)
 
-current_file_name = os.path.basename(__file__)
-print(f"Current file name: {current_file_name}")
-
-# Get file name without extension
-filename = os.path.splitext(current_file_name)[0]
-print(f"File name without extension: {filename}")
-
-# Get file name without extension straight forward
-filename = os.path.splitext(os.path.basename(__file__))[0]
+observation = np.concatenate([V1.real.flatten(), V1.imag.flatten()])
+print(observation)
+U_n_real = observation[:4]
+U_n_imag = observation[4:]
+U_n = U_n_real + 1j * U_n_imag
+U_n = U_n.reshape(2, 2)
+print(U_n)
