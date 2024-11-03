@@ -10,6 +10,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import BaseCallback
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import json
 
 filename = os.path.splitext(os.path.basename(__file__))[0]
 
@@ -218,34 +219,46 @@ class PlottingCallback(BaseCallback):
             plt.savefig(os.path.join(self.save_path, f"{filename}.png"))
         plt.close()
 
-def evaluate_agent(model, env, num_episodes=1):
+def evaluate_agent(model, env, test_num=1, output_filename=None):
     success_count = 0
     total_length = 0
-    for _ in tqdm(range(num_episodes), desc="Evaluating"):
-        target_U = get_haar_random_unitary()
-        # Set the target in the environment
-        env.set_target_unitary(target_U)
-        obs, _ = env.reset()
-        done = False
-        truncated = False
-        while not (done or truncated):
-            action, _ = model.predict(obs, deterministic=True)
-            obs, reward, done, truncated, _ = env.step(action)
-        fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
-        if fidelity >= env.accuracy:
-            success_count += 1
-            total_length += env.current_step
-        # Print the results for this target
-        print(f"Target Unitary:\n{target_U}")
-        print(f"Approximated Unitary:\n{env.U_n}")
-        print(f"Fidelity: {fidelity}")
-        print(f"Sequence Length: {env.current_step}")
-        print("-" * 50)
-    success_rate = success_count / num_episodes
+    buffer = []
+    with open(output_filename, 'w', buffering=8192) as f:
+        for _ in tqdm(range(test_num), desc="Evaluating"):
+            target_U = get_haar_random_unitary()
+            # Set the target in the environment
+            env.set_target_unitary(target_U)
+            obs, _ = env.reset()
+            done = False
+            truncated = False
+            gate_sequence = []
+            while not (done or truncated):
+                action, _ = model.predict(obs, deterministic=True)
+                gate_sequence.append(action)
+                obs, reward, done, truncated, _ = env.step(action)
+            fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
+            success = fidelity >= env.accuracy
+            if success:
+                success_count += 1
+                total_length += env.current_step
+            # Write the results to the output file
+            result = {
+                "success": bool(success),
+                "sequence_length": env.current_step,
+                "target_unitary": [[str(elem) for elem in row] for row in target_U.tolist()],
+                "approximated_unitary": [[str(elem) for elem in row] for row in env.U_n.tolist()],
+                "fidelity": fidelity.item(),
+                "sequence": [gate_descriptions[action] for action in gate_sequence]
+            }
+
+            buffer.append(json.dumps(result))
+            if len(buffer) >= 100:
+                f.write('\n'.join(buffer) + '\n')
+                buffer.clear()
+        if buffer:
+            f.write('\n'.join(buffer) + '\n')
+    success_rate = success_count / test_num
     average_length = total_length / success_count if success_count > 0 else 0
-    print(f"Evaluation over {num_episodes} episodes:")
-    print(f"Success Rate: {success_rate*100:.2f}%")
-    print(f"Average Successful Episode Length: {average_length:.2f}")
     return success_rate, average_length
 
 
@@ -277,8 +290,7 @@ if __name__ == '__main__':
         learning_rate=1e-4,
         batch_size=200,
         train_freq=(1, 'episode'),
-        target_update_interval=2000,
-        buffer_size=500_000,
+        buffer_size=50000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
         exploration_fraction=0.99931,  # Approximately matches epsilon decay
@@ -290,9 +302,9 @@ if __name__ == '__main__':
     plotting_callback = PlottingCallback(save_path='./data')
     
     # Train the model
-    total_timesteps = 10000 # Adjust based on your computational resources
+    total_timesteps = 8000000 # Adjust based on your computational resources
     model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
     
-    success_rate, average_length = evaluate_agent(model, env, num_episodes=10)
+    success_rate, average_length = evaluate_agent(model, env, test_num=1000, output_filename=f"./data/{filename}.jsonl")
     print(f"Success Rate: {success_rate*100:.2f}%, Average Length: {average_length:.2f}")
 
