@@ -16,7 +16,7 @@ I'm going to solve following problems:
 
 [] Quantum compiling by rotation operators using singular value constraints
 
-[] Quantum compiling by the HRC efficiently universal base of gates
+[X] Quantum compiling by the HRC efficiently universal base of gates
 
 [] Generalization to multi-qubit gates
 
