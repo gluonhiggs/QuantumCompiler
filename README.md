@@ -20,7 +20,7 @@ I'm going to solve following problems:
 
 - [ ] Generalization to multi-qubit gates
 
-Note: [x] means the problem has been solved.
+Note: [x] means the problem has been solved, some has better results than the original papers.
 ## Setup and Usage
 
 ### Pre-requisites
