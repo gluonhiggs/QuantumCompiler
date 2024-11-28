@@ -10,15 +10,15 @@ With the success of reproducing the results, we (which is me ) will extend the p
 
 I'm going to solve following problems:
 
-[x] Training neural networks for approximate a single-qubit gate
+- [x] Training neural networks for approximate a single-qubit gate
 
-[x] Quantum compiling by rotation operators
+- [x] Quantum compiling by rotation operators
 
-[] Quantum compiling by rotation operators using singular value constraints
+- [] Quantum compiling by rotation operators using singular value constraints
 
-[X] Quantum compiling by the HRC efficiently universal base of gates
+- [X] Quantum compiling by the HRC efficiently universal base of gates
 
-[] Generalization to multi-qubit gates
+- [] Generalization to multi-qubit gates
 
 Note: [x] means the problem has been solved.
 ## Setup and Usage
