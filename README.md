@@ -14,11 +14,11 @@ I'm going to solve following problems:
 
 - [x] Quantum compiling by rotation operators
 
-- [] Quantum compiling by rotation operators using singular value constraints
+- [ ] Quantum compiling by rotation operators using singular value constraints
 
 - [X] Quantum compiling by the HRC efficiently universal base of gates
 
-- [] Generalization to multi-qubit gates
+- [ ] Generalization to multi-qubit gates
 
 Note: [x] means the problem has been solved.
 ## Setup and Usage
