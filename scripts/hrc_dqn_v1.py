@@ -113,7 +113,7 @@ class QuantumCompilerEnv(gym.Env):
         target_U = target_U.reshape(-1, 2, 2)
         
         # Compute fidelities vectorized
-        fidelities = self.average_gate_fidelity(U_n, target_U)
+        fidelities = self.compute_accuracy(U_n, target_U)
         
         # Compute rewards
         rewards = np.where(fidelities >= self.accuracy, 0, -1 / self.max_steps)
@@ -121,42 +121,37 @@ class QuantumCompilerEnv(gym.Env):
 
     
     def _check_done(self):
-        fidelity = self.average_gate_fidelity(self.U_n, self.target_U)
+        fidelity = self.compute_accuracy(self.U_n, self.target_U)
         return fidelity >= self.accuracy or self.current_step >= self.max_steps
 
-    def average_gate_fidelity(self, U, V):
-        """Compute the average gate fidelity between two unitary matrices U and V."""
+    def compute_accuracy(self, U, V):
+        """Compute the accuracy between two unitary matrices U and V using operator norm error."""
         U = np.array(U)
         V = np.array(V)
+        
         if U.ndim == 2 and V.ndim == 2:
             # Single matrix case
-            d = U.shape[0]
-            U_dagger = np.conjugate(U.T)
-            product = np.dot(U_dagger, V)
-            trace = np.trace(product)
-            fidelity = (np.abs(trace)**2 + d) / (d**2 + d)
-            return np.real(fidelity)
+            operator_norm_error = np.linalg.norm(U - V, ord=2)
+            accuracy = 1 - operator_norm_error
+            accuracy = np.clip(accuracy, 0, 1)  # Ensure accuracy is within [0, 1]
+            return accuracy
         elif U.ndim == 3 and V.ndim == 3:
             # Batch case
-            d = U.shape[-1]
-            U_dagger = np.conjugate(np.transpose(U, axes=(0, 2, 1)))
-            product = np.matmul(U_dagger, V)
-            trace = np.trace(product, axis1=1, axis2=2)
-            fidelity = (np.abs(trace)**2 + d) / (d**2 + d)
-            return np.real(fidelity)
+            operator_norm_error = np.linalg.norm(U - V, ord=2, axis=(1, 2))
+            accuracy = 1 - operator_norm_error
+            accuracy = np.clip(accuracy, 0, 1)
+            return accuracy
         else:
-            # Handle cases where one of U or V is a single matrix and the other is a batch
-            # Expand dimensions to match
+            # Handle mixed dimensions
             if U.ndim == 2:
                 U = U[np.newaxis, :, :]
             if V.ndim == 2:
                 V = V[np.newaxis, :, :]
-            d = U.shape[-1]
-            U_dagger = np.conjugate(np.transpose(U, axes=(0, 2, 1)))
-            product = np.matmul(U_dagger, V)
-            trace = np.trace(product, axis1=1, axis2=2)
-            fidelity = (np.abs(trace)**2 + d) / (d**2 + d)
-            return np.real(fidelity).squeeze()
+            operator_norm_error = np.linalg.norm(U - V, ord=2, axis=(1, 2))
+            accuracy = 1 - operator_norm_error
+            accuracy = np.clip(accuracy, 0, 1)
+            return accuracy.squeeze()
+
 
 
 
@@ -236,7 +231,7 @@ def evaluate_agent(model, env, test_num=1, output_filename=None):
                 action, _ = model.predict(obs, deterministic=True)
                 gate_sequence.append(action)
                 obs, reward, done, truncated, _ = env.step(action)
-            fidelity = env.average_gate_fidelity(env.U_n, env.target_U)
+            fidelity = env.compute_accuracy(env.U_n, env.target_U)
             success = fidelity >= env.accuracy
             if success:
                 success_count += 1
@@ -266,7 +261,7 @@ def evaluate_agent(model, env, test_num=1, output_filename=None):
 if __name__ == '__main__':
     # Get the HRC gate set
     gate_matrices, gate_descriptions = get_HRC_gates()
-    env = QuantumCompilerEnv(gate_set=gate_matrices, accuracy=0.99, max_steps=130)
+    env = QuantumCompilerEnv(gate_set=gate_matrices, accuracy=0.9, max_steps=130)
     env = Monitor(env)
     
     policy_kwargs = dict(
