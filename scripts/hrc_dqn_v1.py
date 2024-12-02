@@ -43,10 +43,11 @@ class QuantumCompilerEnv(gym.Env):
         
         # Adjust observation space for HER (state + goal)
         self.observation_space = spaces.Dict({
-            "observation": spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32),
-            "desired_goal": spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32),
-            "achieved_goal": spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32)
+            "observation": spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32),
+            "desired_goal": spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32),
+            "achieved_goal": spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32)
         })
+
         self.reset()
         
     def reset(self, *, seed=None, options=None):
@@ -54,7 +55,7 @@ class QuantumCompilerEnv(gym.Env):
         self.current_step = 0
         self.U_n = np.eye(2, dtype=complex)
         # Do not change self.target_U if it has been set
-        if not hasattr(self, 'target_U') or self.target_U is None:
+        if not hasattr(self, 'training') or self.training:
             # Generate a random target unitary
             self.target_U = get_haar_random_unitary()
         return self._get_obs_dict(), {}
@@ -116,7 +117,7 @@ class QuantumCompilerEnv(gym.Env):
         fidelities = self.compute_accuracy(U_n, target_U)
         
         # Compute rewards
-        rewards = np.where(fidelities >= self.accuracy, 0, -1 / self.max_steps)
+        rewards = np.where(fidelities >= self.accuracy, 100, -1 / self.max_steps)
         return rewards.squeeze()
 
     
@@ -151,8 +152,6 @@ class QuantumCompilerEnv(gym.Env):
             accuracy = 1 - operator_norm_error
             accuracy = np.clip(accuracy, 0, 1)
             return accuracy.squeeze()
-
-
 
 
 class PlottingCallback(BaseCallback):
@@ -285,21 +284,21 @@ if __name__ == '__main__':
         learning_rate=1e-4,
         batch_size=200,
         train_freq=(1, 'episode'),
-        buffer_size=50000,
+        buffer_size=100000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
-        exploration_fraction=0.99931,  # Approximately matches epsilon decay
+        exploration_fraction=0.99951,  # Approximately matches epsilon decay 0.99931
         verbose=1,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
 
     # Define the custom plotting callback
-    plotting_callback = PlottingCallback(save_path='./data')
+    # plotting_callback = PlottingCallback(save_path='./data')
     
     # Train the model
     total_timesteps = 8000000 # Adjust based on your computational resources
-    model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
-    
+    # model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
+    model.learn(total_timesteps=total_timesteps)
     success_rate, average_length = evaluate_agent(model, env, test_num=1000, output_filename=f"./data/{filename}.jsonl")
     print(f"Success Rate: {success_rate*100:.2f}%, Average Length: {average_length:.2f}")
 
