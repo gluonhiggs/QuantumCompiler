@@ -284,7 +284,7 @@ if __name__ == '__main__':
         learning_rate=1e-4,
         batch_size=200,
         train_freq=(1, 'episode'),
-        buffer_size=100000,
+        buffer_size=200000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
         exploration_fraction=0.99951,  # Approximately matches epsilon decay 0.99931
@@ -296,7 +296,7 @@ if __name__ == '__main__':
     # plotting_callback = PlottingCallback(save_path='./data')
     
     # Train the model
-    total_timesteps = 8000000 # Adjust based on your computational resources
+    total_timesteps = 10000000 # Adjust based on your computational resources
     # model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
     model.learn(total_timesteps=total_timesteps)
     success_rate, average_length = evaluate_agent(model, env, test_num=1000, output_filename=f"./data/{filename}.jsonl")
