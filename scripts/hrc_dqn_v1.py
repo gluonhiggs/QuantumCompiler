@@ -11,7 +11,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import json
-
+from gymnasium import GoalEnv
 filename = os.path.splitext(os.path.basename(__file__))[0]
 
 def get_HRC_gates():
@@ -33,7 +33,7 @@ def get_haar_random_unitary():
     ph = d / np.abs(d)
     return q @ np.diag(ph)
 
-class QuantumCompilerEnv(gym.Env):
+class QuantumCompilerEnv(GoalEnv):
     def __init__(self, gate_set, accuracy=0.99, max_steps=130):
         super().__init__()
         self.gate_set = gate_set
@@ -240,7 +240,6 @@ def evaluate_agent(model, env, test_num=1, output_filename=None):
                 gate_matrices_sequence = [env.gate_set[action].tolist() for action in gate_sequence]
                     # Write the results to the output file
                 result = {
-                    "success": True,
                     "sequence_length": env.current_step,
                     "target_unitary": [[str(elem) for elem in row] for row in target_U.tolist()],
                     "approximated_unitary": [[str(elem) for elem in row] for row in env.U_n.tolist()],
@@ -263,7 +262,7 @@ def evaluate_agent(model, env, test_num=1, output_filename=None):
 if __name__ == '__main__':
     # Get the HRC gate set
     gate_matrices, gate_descriptions = get_HRC_gates()
-    env = QuantumCompilerEnv(gate_set=gate_matrices, accuracy=0.9, max_steps=130)
+    env = QuantumCompilerEnv(gate_set=gate_matrices, accuracy=0.95, max_steps=130)
     env = Monitor(env)
     
     policy_kwargs = dict(
@@ -284,13 +283,13 @@ if __name__ == '__main__':
         replay_buffer_class=HerReplayBuffer,
         replay_buffer_kwargs=replay_buffer_kwargs,
         policy_kwargs=policy_kwargs,
-        learning_rate=1e-4,
-        batch_size=128,
+        learning_rate=1e-3,
+        batch_size=200,
         train_freq=(1, 'episode'),
         buffer_size=100000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
-        exploration_fraction=0.3,  # Approximately matches epsilon decay 0.99931
+        exploration_fraction=0.4,  # Approximately matches epsilon decay 0.99931
         verbose=1,
         device='auto',  # Change to 'cpu' if not using GPU
     )
