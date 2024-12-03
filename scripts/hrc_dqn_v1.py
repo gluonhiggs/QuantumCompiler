@@ -40,7 +40,7 @@ class QuantumCompilerEnv(gym.Env):
         self.accuracy = accuracy
         self.max_steps = max_steps
         self.action_space = spaces.Discrete(len(self.gate_set))
-        
+        self.training = True
         # Adjust observation space for HER (state + goal)
         self.observation_space = spaces.Dict({
             "observation": spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32),
@@ -55,8 +55,7 @@ class QuantumCompilerEnv(gym.Env):
         self.current_step = 0
         self.U_n = np.eye(2, dtype=complex)
         # Do not change self.target_U if it has been set
-        if not hasattr(self, 'target_U') or self.target_U is None:
-            # Generate a random target unitary
+        if self.training:
             self.target_U = get_haar_random_unitary()
         return self._get_obs_dict(), {}
     
@@ -217,7 +216,9 @@ def evaluate_agent(model, env, test_num=1, output_filename=None):
     success_count = 0
     total_length = 0
     buffer = []
+    env.training = False
     with open(output_filename, 'w', buffering=8192) as f:
+
         for _ in tqdm(range(test_num), desc="Evaluating"):
             target_U = get_haar_random_unitary()
             # Set the target in the environment
@@ -235,20 +236,22 @@ def evaluate_agent(model, env, test_num=1, output_filename=None):
             if success:
                 success_count += 1
                 total_length += env.current_step
-            # Write the results to the output file
-            result = {
-                "success": bool(success),
-                "sequence_length": env.current_step,
-                "target_unitary": [[str(elem) for elem in row] for row in target_U.tolist()],
-                "approximated_unitary": [[str(elem) for elem in row] for row in env.U_n.tolist()],
-                "fidelity": fidelity.item(),
-                "sequence": [gate_descriptions[action] for action in gate_sequence]
-            }
-
-            buffer.append(json.dumps(result))
-            if len(buffer) >= 100:
-                f.write('\n'.join(buffer) + '\n')
-                buffer.clear()
+                # Write the results to the output file
+                gate_matrices_sequence = [env.gate_set[action].tolist() for action in gate_sequence]
+                    # Write the results to the output file
+                result = {
+                    "success": True,
+                    "sequence_length": env.current_step,
+                    "target_unitary": [[str(elem) for elem in row] for row in target_U.tolist()],
+                    "approximated_unitary": [[str(elem) for elem in row] for row in env.U_n.tolist()],
+                    "fidelity": fidelity.item(),
+                    "sequence": [gate_descriptions[action] for action in gate_sequence],
+                    "gate_matrices_sequence": gate_matrices_sequence
+                }
+                buffer.append(json.dumps(result))
+                if len(buffer) >= 100:
+                    f.write('\n'.join(buffer) + '\n')
+                    buffer.clear()
         if buffer:
             f.write('\n'.join(buffer) + '\n')
     success_rate = success_count / test_num
@@ -282,12 +285,12 @@ if __name__ == '__main__':
         replay_buffer_kwargs=replay_buffer_kwargs,
         policy_kwargs=policy_kwargs,
         learning_rate=1e-4,
-        batch_size=200,
+        batch_size=128,
         train_freq=(1, 'episode'),
         buffer_size=100000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
-        exploration_fraction=0.99951,  # Approximately matches epsilon decay 0.99931
+        exploration_fraction=0.3,  # Approximately matches epsilon decay 0.99931
         verbose=1,
         device='auto',  # Change to 'cpu' if not using GPU
     )
