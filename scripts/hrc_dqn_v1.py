@@ -55,7 +55,7 @@ class QuantumCompilerEnv(gym.Env):
         self.current_step = 0
         self.U_n = np.eye(2, dtype=complex)
         # Do not change self.target_U if it has been set
-        if not hasattr(self, 'training') or self.training:
+        if not hasattr(self, 'target_U') or self.target_U is None:
             # Generate a random target unitary
             self.target_U = get_haar_random_unitary()
         return self._get_obs_dict(), {}
@@ -117,7 +117,7 @@ class QuantumCompilerEnv(gym.Env):
         fidelities = self.compute_accuracy(U_n, target_U)
         
         # Compute rewards
-        rewards = np.where(fidelities >= self.accuracy, 100, -1 / self.max_steps)
+        rewards = np.where(fidelities >= self.accuracy, 0, -1 / self.max_steps)
         return rewards.squeeze()
 
     
@@ -264,7 +264,7 @@ if __name__ == '__main__':
     env = Monitor(env)
     
     policy_kwargs = dict(
-        net_arch=[128, 128],
+        net_arch=[256, 256],
         activation_fn=SELU,
     )
     
@@ -284,12 +284,12 @@ if __name__ == '__main__':
         learning_rate=1e-4,
         batch_size=200,
         train_freq=(1, 'episode'),
-        buffer_size=200000,
+        buffer_size=100000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
         exploration_fraction=0.99951,  # Approximately matches epsilon decay 0.99931
         verbose=1,
-        device='cuda',  # Change to 'cpu' if not using GPU
+        device='auto',  # Change to 'cpu' if not using GPU
     )
 
     # Define the custom plotting callback
