@@ -195,7 +195,7 @@ if __name__ == '__main__':
         learning_starts=500000,
         target_update_interval=20000,
         buffer_size=100000,
-        verbose=1,
+        verbose=0,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     # Define the custom plotting callback

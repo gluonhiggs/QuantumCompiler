@@ -11,7 +11,6 @@ from stable_baselines3.common.callbacks import BaseCallback
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import json
-from gymnasium import GoalEnv
 filename = os.path.splitext(os.path.basename(__file__))[0]
 
 def get_HRC_gates():
@@ -33,7 +32,7 @@ def get_haar_random_unitary():
     ph = d / np.abs(d)
     return q @ np.diag(ph)
 
-class QuantumCompilerEnv(GoalEnv):
+class QuantumCompilerEnv(gym.Env):
     def __init__(self, gate_set, accuracy=0.99, max_steps=130):
         super().__init__()
         self.gate_set = gate_set
@@ -283,13 +282,13 @@ if __name__ == '__main__':
         replay_buffer_class=HerReplayBuffer,
         replay_buffer_kwargs=replay_buffer_kwargs,
         policy_kwargs=policy_kwargs,
-        learning_rate=1e-3,
+        learning_rate=1e-4,
         batch_size=200,
         train_freq=(1, 'episode'),
         buffer_size=100000,
         exploration_initial_eps=1.0,
         exploration_final_eps=0.05,
-        exploration_fraction=0.4,  # Approximately matches epsilon decay 0.99931
+        exploration_fraction=0.99931,  # Approximately matches epsilon decay 0.99931
         verbose=1,
         device='auto',  # Change to 'cpu' if not using GPU
     )

@@ -39,6 +39,14 @@ def get_fixed_target_unitary():
         [0.09607122 + 0.45658344j,  0.76749896 + 0.43959894j]
     ], dtype=complex)
 
+# Generate Haar random target unitary matrix
+def get_haar_random_unitary():
+    z = (np.random.randn(2, 2) + 1j * np.random.randn(2, 2)) / np.sqrt(2)
+    q, r = np.linalg.qr(z)
+    d = np.diagonal(r)
+    ph = d / np.abs(d)
+    return q @ np.diag(ph)
+
 class QuantumCompilerEnv(gym.Env):
     def __init__(self, gate_set, tolerance):
         super().__init__()
@@ -198,7 +206,7 @@ if __name__ == '__main__':
         learning_starts=5000,
         target_update_interval=2000,
         buffer_size=10000,
-        verbose=1,
+        verbose=0,
         device='cuda',  # Change to 'cpu' if not using GPU
     )
     # Define the custom plotting callback

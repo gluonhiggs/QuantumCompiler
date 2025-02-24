@@ -8,3 +8,4 @@ seaborn==0.13.2
 pandas==2.2.2
 baselines==0.1.5
 shimmy>=0.2.1
+highway-env==1.9.1
