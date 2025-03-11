@@ -10,10 +10,9 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-
 # Basis gates with parameterized options
 def get_basis_gates():
-    """Single-qubit gates from BASIS_GATES, focusing on key parameterized and fixed gates."""
+    """Single-qubit gates from BASIS_GATES."""
     gate_descriptions = ["rx", "ry", "rz", "u1", "u3", "x", "y", "z", "h", "s", "t"]
     param_counts = [1, 1, 1, 1, 3, 0, 0, 0, 0, 0, 0]  # Number of angles per gate
     return gate_descriptions, param_counts
@@ -65,14 +64,17 @@ class SingleQubitHybridEnv(gym.Env):
         self.max_steps = max_steps
         self.accuracy = accuracy
         self.lambda_penalty = lambda_penalty
+        self.num_gates = len(gate_descriptions)
         
-        # Hybrid action space: discrete gate choice + continuous angles (max 3 params)
-        self.action_space = spaces.Dict({
-            "gate": spaces.Discrete(len(gate_descriptions)),
-            "angles": spaces.Box(low=-np.pi, high=np.pi, shape=(3,), dtype=np.float32)
-        })
+        # Flattened action space: [gate_choice, angle1, angle2, angle3]
+        # gate_choice in [0, num_gates), angles in [-pi, pi]
+        self.action_space = spaces.Box(
+            low=np.array([0] + [-np.pi] * 3),
+            high=np.array([self.num_gates] + [np.pi] * 3),
+            dtype=np.float32
+        )
         
-        self.observation_space = spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32)  # Flattened current U
+        self.observation_space = spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32)
         
         self.reset()
         
@@ -85,8 +87,9 @@ class SingleQubitHybridEnv(gym.Env):
     
     def step(self, action):
         self.steps += 1
-        gate_idx = action["gate"]
-        angles = action["angles"][:self.param_counts[gate_idx]]  # Use only required angles
+        gate_choice = np.clip(action[0], 0, self.num_gates - 1e-6)  # Ensure within bounds
+        gate_idx = int(gate_choice)  # Discretize
+        angles = action[1:1 + self.param_counts[gate_idx]]  # Extract required angles
         
         gate = apply_gate(gate_idx, angles, self.gate_descriptions)
         self.current_U = self.current_U @ gate
@@ -131,7 +134,7 @@ def aq_star_search(model, env, gate_descriptions, param_counts, max_depth=10):
     
     start_U = np.eye(2, dtype=complex)
     target_U = env.target_U
-    queue = [(0, 0, [], start_U)]  # (cost, steps, sequence, unitary)
+    queue = [(0, 0, [], start_U)]
     visited = set()
     
     while queue:
@@ -145,9 +148,9 @@ def aq_star_search(model, env, gate_descriptions, param_counts, max_depth=10):
         
         obs = env._flatten_complex(U)
         for gate_idx in range(len(gate_descriptions)):
-            # Predict angles using the model
+            # Use model's angle prediction
             action, _ = model.predict(obs, deterministic=True)
-            angles = action["angles"][:param_counts[gate_idx]]
+            angles = action[1:1 + param_counts[gate_idx]]
             new_U = U @ apply_gate(gate_idx, angles, gate_descriptions)
             
             new_key = tuple(new_U.flatten())
@@ -163,16 +166,15 @@ def train_hybrid_agent():
     gate_descriptions, param_counts = get_basis_gates()
     env = SingleQubitHybridEnv(gate_descriptions, param_counts, max_steps=10)
     env = Monitor(env)
-    env = DummyVecEnv([lambda: env])  # PPO requires vectorized env
+    env = DummyVecEnv([lambda: env])
     
-    # Custom policy for hybrid action space
     policy_kwargs = dict(
-        net_arch=dict(pi=[256, 256], vf=[256, 256]),  # Separate actor and critic networks
+        net_arch=dict(pi=[256, 256], vf=[256, 256]),
         activation_fn=nn.ReLU
     )
     
     model = PPO(
-        "MultiInputPolicy",  # Handles Dict action space
+        "MlpPolicy",  # Standard policy for Box action space
         env,
         learning_rate=3e-4,
         n_steps=2048,
@@ -182,10 +184,11 @@ def train_hybrid_agent():
         gae_lambda=0.95,
         ent_coef=0.01,
         verbose=1,
-        policy_kwargs=policy_kwargs
+        policy_kwargs=policy_kwargs,
+        device="cuda" if torch.cuda.is_available() else "cpu"
     )
     
-    model.learn(total_timesteps=500_000)  # Increased for hybrid complexity
+    model.learn(total_timesteps=500_000)
     model.save("ppo_hybrid_single_qubit")
     return model, env, gate_descriptions, param_counts
 
@@ -198,20 +201,17 @@ def evaluate_agent(model, env, gate_descriptions, param_counts, n_evals=10):
         gate_sequence = []
         angle_sequence = []
         
-        # PPO prediction
         while not done and steps < env.max_steps:
             action, _ = model.predict(obs, deterministic=True)
-            gate_idx = action["gate"]
-            angles = action["angles"][:param_counts[gate_idx]]
+            gate_idx = int(np.clip(action[0], 0, len(gate_descriptions) - 1e-6))
+            angles = action[1:1 + param_counts[gate_idx]]
             gate_sequence.append(gate_idx)
             angle_sequence.extend(angles)
             obs, reward, done, _, info = env.step(action)
             steps += 1
         
-        # AQ* refinement (gate sequence only, angles from PPO)
         refined_sequence = aq_star_search(model, env, gate_descriptions, param_counts)
         
-        # Variational optimization
         optimized_params = variational_optimize(env.current_U, env.target_U, gate_descriptions, param_counts, refined_sequence)
         final_U = np.eye(2, dtype=complex)
         param_idx = 0
