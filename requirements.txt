@@ -9,3 +9,4 @@ pandas==2.2.2
 baselines==0.1.5
 shimmy>=0.2.1
 highway-env==1.9.1
+optuna==4.2.1

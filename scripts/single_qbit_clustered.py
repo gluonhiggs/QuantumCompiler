@@ -41,6 +41,7 @@ def random_su2_matrix():
     z2 = np.array([[np.exp(-1j * gamma / 2), 0], [0, np.exp(1j * gamma / 2)]], dtype=complex)
     return np.dot(z1, np.dot(y, z2))
 
+
 class QuantumCompilerEnv(gym.Env):
     def __init__(self, gate_set, tolerance):
         super().__init__()
@@ -213,7 +214,7 @@ if __name__ == "__main__":
         replay_buffer_kwargs=dict(
             goal_selection_strategy='future',
             n_sampled_goal=4,
-        )  # Removed 'online_sampling'
+        ) 
     )
     plotting_callback = PlottingCallback(save_path='./data')
     model.learn(total_timesteps=500000000, log_interval=100, callback=plotting_callback)
