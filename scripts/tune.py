@@ -289,56 +289,56 @@ def make_vec_env(n_envs=1, use_subproc=True, seed=0):
 
 
 if __name__ == "__main__":
-    best_params = {
-        'n_envs': 12,
-        'learning_rate': 5.919451711225833e-05,
-        'batch_size': 1024,
-        'buffer_size': 50000,
-        'exploration_fraction': 0.2477423172876547,
-        'learning_starts': 45824,
-        'train_freq': (1, 'step'),
-        'net_arch_depth': 3,
-        'net_arch_width': 64,
-        'device': 'cuda',
-    }
-    n_envs = best_params["n_envs"]
-    vec_env = make_vec_env(n_envs=n_envs, use_subproc=(n_envs > 1))
+    # Example usage of Optuna
+    import optuna
 
-    net_arch_depth = best_params["net_arch_depth"]
-    net_arch_width = best_params["net_arch_width"]
-    net_arch = [net_arch_width] * net_arch_depth
-    
-    policy_kwargs = dict(
-        net_arch=net_arch,
-        activation_fn=nn.SELU,
-    )
+    sampler = optuna.samplers.TPESampler(seed=123)
+    study = optuna.create_study(direction="maximize", sampler=sampler)
+    study.optimize(objective, n_trials=20)  # e.g. 5 trials for demonstration
 
-    model = DQN(
-        'MultiInputPolicy',
-        vec_env,
-        learning_rate=best_params["learning_rate"],
-        batch_size=best_params["batch_size"],
-        train_freq=best_params["train_freq"],  # e.g. (1, 'step')
-        buffer_size=best_params["buffer_size"],
-        exploration_initial_eps=1.0,
-        exploration_final_eps=0.05,
-        exploration_fraction=best_params["exploration_fraction"],
-        learning_starts=best_params["learning_starts"],
-        verbose=0,
-        device=best_params["device"],
-        policy_kwargs=policy_kwargs,
-        replay_buffer_class=HerReplayBuffer,
-        replay_buffer_kwargs=dict(
-            goal_selection_strategy='future',
-            n_sampled_goal=4,
-        )
-    )
+    print("Number of finished trials: ", len(study.trials))
+    print("Best trial:")
+    trial = study.best_trial
+    print(f"  Value (Success Rate): {trial.value}")
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print(f"    {key}: {value}")
+    fig = optuna.visualization.plot_param_importances(study)
+    fig.write_image("param_importances.png") 
 
-    callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=2000000, log_interval=100, callback=callback)
 
-    # Save the model
-    model.save("single_qbit_clustered_v1")
-    
-    eval_env = make_vec_env(n_envs=1, use_subproc=False)
-    final_success = evaluate_agent(model, eval_env, num_episodes=10)
+
+# if __name__ == "__main__":
+#     env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.98)
+#     env = Monitor(env)
+
+#     policy_kwargs = dict(
+#         net_arch=[256, 256],
+#         activation_fn=nn.SELU,
+#     )
+
+#     model = DQN(
+#         'MultiInputPolicy',
+#         env,
+#         learning_rate=0.005,
+#         batch_size=200,
+#         train_freq=(1, 'episode'),
+#         buffer_size=10000,
+#         exploration_initial_eps=1.0,
+#         exploration_final_eps=0.05,
+#         exploration_fraction=0.99931,
+#         verbose=0,
+#         device='auto',
+#         policy_kwargs=policy_kwargs,
+#         replay_buffer_class=HerReplayBuffer,
+#         replay_buffer_kwargs=dict(
+#             goal_selection_strategy='future',
+#             n_sampled_goal=4,
+#         )
+#     )
+
+#     callback = PlottingCallback(save_path='./data')
+#     model.learn(total_timesteps=200000, log_interval=100, callback=callback)
+
+#     success_rate = evaluate_agent(model, env, num_episodes=10)
+#     print(f"Success Rate: {success_rate * 100:.2f}%")
