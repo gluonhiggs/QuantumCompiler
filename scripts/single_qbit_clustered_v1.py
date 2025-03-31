@@ -10,7 +10,6 @@ from stable_baselines3.common.callbacks import BaseCallback
 import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
-import optuna
 from optuna.importance import get_param_importances
 import gc
 import torch
@@ -335,10 +334,11 @@ if __name__ == "__main__":
     )
 
     callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=2000000, log_interval=100, callback=callback)
+    model.learn(total_timesteps=2_000_000, log_interval=100, callback=callback)
 
     # Save the model
     model.save("single_qbit_clustered_v1")
     
     eval_env = make_vec_env(n_envs=1, use_subproc=False)
     final_success = evaluate_agent(model, eval_env, num_episodes=10)
+    print(f"Final success rate: {final_success}")
