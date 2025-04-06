@@ -289,7 +289,7 @@ def make_vec_env(n_envs=1, use_subproc=True, seed=0):
 
 if __name__ == "__main__":
     best_params = {
-        'n_envs': 12,
+        'n_envs': 16,
         'learning_rate': 5.919451711225833e-05,
         'batch_size': 1024,
         'buffer_size': 50000,

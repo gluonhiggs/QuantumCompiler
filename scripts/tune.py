@@ -101,7 +101,7 @@ class QuantumCompilerEnv(gym.Env):
         self.current_step += 1
         done = (fidelity >= self.tolerance) or (self.current_step >= self.max_steps)
 
-        if done and fidelity >= self.tolerance:
+        if fidelity >= self.tolerance:
             reward += 5.0 * (self.max_steps - self.current_step)
 
         obs = self._get_observation()
@@ -205,17 +205,17 @@ def evaluate_agent(model, vec_env, num_episodes=5):
 
 def objective(trial):
     # 1) Suggest the number of parallel envs
-    n_envs = trial.suggest_int("n_envs", 1, 16)
+    n_envs = trial.suggest_int("n_envs", 1, 26)
 
     # 2) Suggest other hyperparams
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 5e-3, log=True)
     batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512, 1024, 2048])
-    buffer_size = trial.suggest_categorical("buffer_size", [5000, 10000, 20000, 50000, 100000])
+    buffer_size = trial.suggest_categorical("buffer_size", [200000, 300000, 500000, 1000000])
     exploration_fraction = trial.suggest_float("exploration_fraction", 0.2, 1.0)
-    learning_starts = trial.suggest_int("learning_starts", 10000, 100000)
+    learning_starts = trial.suggest_int("learning_starts", 10000, 200000)
     train_freq = trial.suggest_categorical("train_freq", [(1, 'step'), (2, 'step'), (4, 'step'), (8, 'step')])
-    net_arch_depth = trial.suggest_categorical("net_arch_depth", [1, 2, 3])
-    net_arch_width = trial.suggest_categorical("net_arch_width", [64, 128, 256, 512])
+    net_arch_depth = trial.suggest_categorical("net_arch_depth", [1, 2, 3, 4])
+    net_arch_width = trial.suggest_categorical("net_arch_width", [64, 128, 256, 512, 1024])
     device = trial.suggest_categorical("device", ["cpu", "cuda"])
 
     # Build net_arch
@@ -227,7 +227,21 @@ def objective(trial):
 
     # 3) Create vectorized env
     vec_env = make_vec_env(n_envs=n_envs, use_subproc=True)
+    class RewardCallback(BaseCallback):
+        def __init__(self):
+            super().__init__()
+            self.total_reward = 0
+            self.episode_count = 0
 
+        def _on_step(self):
+            if self.locals.get('dones')[0]:
+                ep_info = self.locals.get('infos')[0].get('episode')
+                if ep_info:
+                    self.total_reward += ep_info['r']
+                    self.episode_count += 1
+            return True
+
+    callback = RewardCallback()
     # 4) Build model
     model = DQN(
         'MultiInputPolicy',
@@ -251,17 +265,24 @@ def objective(trial):
     )
 
     # 5) Train for 200k timesteps
-    model.learn(total_timesteps=200_000)
+    model.learn(total_timesteps=1_000_000, callback=callback)
 
+    # Calculate mean reward
+    mean_reward = callback.total_reward / max(1, callback.episode_count)  # Avoid division by 0
+
+    # Cleanup
+    del model
+    del vec_env
+    gc.collect()
     # 6) Evaluate
     # We can either evaluate on the vectorized environment (using the first env)
     # or create a separate single env. Let's do a separate single env to avoid
     # confusion with multiple parallel instances
-    eval_env = make_vec_env(n_envs=1, use_subproc=False)  # single env
-    success_rate = evaluate_agent(model, eval_env, num_episodes=10)
-
+    # eval_env = make_vec_env(n_envs=1, use_subproc=False)  # single env
+    # success_rate = evaluate_agent(model, eval_env, num_episodes=10)
+    
     # Return success_rate to maximize
-    return success_rate
+    return mean_reward
 
 
 def make_env(seed=None, idx=0):
@@ -290,8 +311,6 @@ def make_vec_env(n_envs=1, use_subproc=True, seed=0):
 
 if __name__ == "__main__":
     # Example usage of Optuna
-    import optuna
-
     sampler = optuna.samplers.TPESampler(seed=123)
     study = optuna.create_study(direction="maximize", sampler=sampler)
     study.optimize(objective, n_trials=20)  # e.g. 5 trials for demonstration
@@ -303,42 +322,10 @@ if __name__ == "__main__":
     print("  Params: ")
     for key, value in trial.params.items():
         print(f"    {key}: {value}")
+    # Write the best trial to a CSV file
+    with open("best_trial.csv", "w") as f:
+        f.write("param,value\n")
+        for key, value in trial.params.items():
+            f.write(f"{key},{value}\n")
     fig = optuna.visualization.plot_param_importances(study)
     fig.write_image("param_importances.png") 
-
-
-
-# if __name__ == "__main__":
-#     env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.98)
-#     env = Monitor(env)
-
-#     policy_kwargs = dict(
-#         net_arch=[256, 256],
-#         activation_fn=nn.SELU,
-#     )
-
-#     model = DQN(
-#         'MultiInputPolicy',
-#         env,
-#         learning_rate=0.005,
-#         batch_size=200,
-#         train_freq=(1, 'episode'),
-#         buffer_size=10000,
-#         exploration_initial_eps=1.0,
-#         exploration_final_eps=0.05,
-#         exploration_fraction=0.99931,
-#         verbose=0,
-#         device='auto',
-#         policy_kwargs=policy_kwargs,
-#         replay_buffer_class=HerReplayBuffer,
-#         replay_buffer_kwargs=dict(
-#             goal_selection_strategy='future',
-#             n_sampled_goal=4,
-#         )
-#     )
-
-#     callback = PlottingCallback(save_path='./data')
-#     model.learn(total_timesteps=200000, log_interval=100, callback=callback)
-
-#     success_rate = evaluate_agent(model, env, num_episodes=10)
-#     print(f"Success Rate: {success_rate * 100:.2f}%")
