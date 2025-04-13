@@ -1,236 +1,261 @@
-import os
-import gymnasium as gym
-from gymnasium import spaces
 import numpy as np
+from scipy.linalg import expm
+
+class QuantumCompileEnv:
+    def __init__(self, target_unitary, action_space):
+        self.target = target_unitary  # e.g., QFT unitary (8x8)
+        self.action_space = action_space  # List of gates in \tilde{\mathcal{G}}
+        self.current_unitary = np.eye(8, dtype=complex)  # Start with I_8
+        self.max_steps = 500
+        self.step_count = 0
+
+    def reset(self):
+        self.current_unitary = np.eye(8, dtype=complex)
+        self.step_count = 0
+        return self._get_state()
+
+    def _get_state(self):
+        # Flatten unitary into real and imaginary parts
+        return np.concatenate([self.current_unitary.real.flatten(), self.current_unitary.imag.flatten()])
+
+    def step(self, action_idx):
+        # Apply gate corresponding to action_idx
+        gate = self.action_space[action_idx]
+        self.current_unitary = gate @ self.current_unitary
+        self.step_count += 1
+
+        # Compute reward
+        fidelity = abs(np.trace(np.conj(self.target).T @ self.current_unitary)) / 8
+        reward = fidelity
+
+        # Done condition
+        done = fidelity >= 1 - 1e-4 or self.step_count >= self.max_steps
+        return self._get_state(), reward, done, {}
+
+# Define native gates
+I = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.array([[1, 0], [0, -1]], dtype=complex)
+T = np.diag([1, np.exp(1j * np.pi / 4)])
+CZ = np.diag([1, 1, 1, -1]).reshape(4, 4)
+
+# Define action space \tilde{\mathcal{G}}
+def RX(theta):
+    return expm(-1j * theta / 2 * X)
+
+def RY(theta):
+    return expm(-1j * theta / 2 * Y)
+
+action_space = [
+    np.kron(np.kron(RX(np.pi/2), I), I),  # RX(pi/2) on Q1
+    np.kron(np.kron(I, RX(np.pi/2)), I),  # RX(pi/2) on Q2
+    np.kron(np.kron(I, I), RX(np.pi/2)),  # RX(pi/2) on Q3
+    # RX(-pi/2) on each qubit
+    np.kron(np.kron(RX(-np.pi/2), I), I),  # Q1
+    np.kron(np.kron(I, RX(-np.pi/2)), I),  # Q2
+    np.kron(np.kron(I, I), RX(-np.pi/2)),  # Q3
+    # RY(pi/2) on each qubit
+    np.kron(np.kron(RY(np.pi/2), I), I),  # Q1
+    np.kron(np.kron(I, RY(np.pi/2)), I),  # Q2
+    np.kron(np.kron(I, I), RY(np.pi/2)),  # Q3
+    # RY(-pi/2) on each qubit
+    np.kron(np.kron(RY(-np.pi/2), I), I),  # Q1
+    np.kron(np.kron(I, RY(-np.pi/2)), I),  # Q2
+    np.kron(np.kron(I, I), RY(-np.pi/2)),  # Q3
+    # T on each qubit
+    np.kron(np.kron(T, I), I),  # Q1
+    np.kron(np.kron(I, T), I),  # Q2
+    np.kron(np.kron(I, I), T),  # Q3
+    # T^\dagger on each qubit
+    np.kron(np.kron(T.conj().T, I), I),  # Q1
+    np.kron(np.kron(I, T.conj().T), I),  # Q2
+    np.kron(np.kron(I, I), T.conj().T),  # Q3
+    np.kron(CZ, I),  # CZ between Q2-Q3
+    np.kron(I, CZ),  # CZ between Q3-Q6
+    # Total 20 actions
+]
+
+# Target: Three-qubit QFT unitary
+from qiskit.quantum_info import Operator
+from qiskit.circuit.library import QFT
+qft_circuit = QFT(num_qubits=3, approximation_degree=0, do_swaps=True, inverse=False, insert_barriers=False)
+
+# Convert the circuit to its unitary matrix
+target_unitary = Operator(qft_circuit).data
+
+env = QuantumCompileEnv(target_unitary, action_space)
 import torch
 import torch.nn as nn
-from scipy.optimize import minimize
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv
+class DQN(nn.Module):
+    def __init__(self, input_dim=128, output_dim=20):
+        super(DQN, self).__init__()
+        self.input_layer = nn.Linear(input_dim, 8000)
+        self.hidden1 = nn.Linear(8000, 3000)
+        # 6 residual blocks
+        self.res_blocks = nn.ModuleList([ResidualBlock(3000) for _ in range(6)])
+        self.output_layer = nn.Linear(3000, output_dim)
+        self.leaky_relu = nn.LeakyReLU()
+        self.batch_norm1 = nn.BatchNorm1d(8000)
+        self.batch_norm2 = nn.BatchNorm1d(3000)
 
-# Basis gates with parameterized options
-def get_basis_gates():
-    """Single-qubit gates from BASIS_GATES."""
-    gate_descriptions = ["rx", "ry", "rz", "u1", "u3", "x", "y", "z", "h", "s", "t"]
-    param_counts = [1, 1, 1, 1, 3, 0, 0, 0, 0, 0, 0]  # Number of angles per gate
-    return gate_descriptions, param_counts
+    def forward(self, x):
+        x = self.leaky_relu(self.batch_norm1(self.input_layer(x)))
+        x = self.leaky_relu(self.batch_norm2(self.hidden1(x)))
+        for block in self.res_blocks:
+            x = block(x)
+        return self.output_layer(x)
 
-def apply_gate(gate_idx, angles, gate_descriptions):
-    """Apply a gate with given angles."""
-    gate_name = gate_descriptions[gate_idx]
-    if gate_name == "rx":
-        θ = angles[0]
-        return np.array([[np.cos(θ/2), -1j*np.sin(θ/2)], [-1j*np.sin(θ/2), np.cos(θ/2)]], dtype=complex)
-    elif gate_name == "ry":
-        θ = angles[0]
-        return np.array([[np.cos(θ/2), -np.sin(θ/2)], [np.sin(θ/2), np.cos(θ/2)]], dtype=complex)
-    elif gate_name == "rz":
-        θ = angles[0]
-        return np.array([[np.exp(-1j*θ/2), 0], [0, np.exp(1j*θ/2)]], dtype=complex)
-    elif gate_name == "u1":
-        λ = angles[0]
-        return np.array([[1, 0], [0, np.exp(1j*λ)]], dtype=complex)
-    elif gate_name == "u3":
-        θ, φ, λ = angles
-        return np.array([[np.cos(θ/2), -np.exp(1j*λ)*np.sin(θ/2)], 
-                         [np.exp(1j*φ)*np.sin(θ/2), np.exp(1j*(φ+λ))*np.cos(θ/2)]], dtype=complex)
-    elif gate_name == "x":
-        return np.array([[0, 1], [1, 0]], dtype=complex)
-    elif gate_name == "y":
-        return np.array([[0, -1j], [1j, 0]], dtype=complex)
-    elif gate_name == "z":
-        return np.array([[1, 0], [0, -1]], dtype=complex)
-    elif gate_name == "h":
-        return np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
-    elif gate_name == "s":
-        return np.array([[1, 0], [0, 1j]], dtype=complex)
-    elif gate_name == "t":
-        return np.array([[1, 0], [0, np.exp(1j*np.pi/4)]], dtype=complex)
+class ResidualBlock(nn.Module):
+    def __init__(self, dim):
+        super(ResidualBlock, self).__init__()
+        self.fc1 = nn.Linear(dim, dim)
+        self.fc2 = nn.Linear(dim, dim)
+        self.leaky_relu = nn.LeakyReLU()
+        self.batch_norm = nn.BatchNorm1d(dim)
 
-def random_unitary_haar():
-    z = (np.random.randn(2, 2) + 1j * np.random.randn(2, 2)) / np.sqrt(2)
-    q, r = np.linalg.qr(z)
-    d = np.diagonal(r)
-    phase = d / np.abs(d)
-    return q @ np.diag(phase)
+    def forward(self, x):
+        residual = x
+        x = self.leaky_relu(self.batch_norm(self.fc1(x)))
+        x = self.batch_norm(self.fc2(x))
+        x += residual
+        return self.leaky_relu(x)
 
-class SingleQubitHybridEnv(gym.Env):
-    def __init__(self, gate_descriptions, param_counts, max_steps=10, accuracy=0.95, lambda_penalty=0.1):
-        super().__init__()
-        self.gate_descriptions = gate_descriptions
-        self.param_counts = param_counts
-        self.max_steps = max_steps
-        self.accuracy = accuracy
-        self.lambda_penalty = lambda_penalty
-        self.num_gates = len(gate_descriptions)
-        
-        # Flattened action space: [gate_choice, angle1, angle2, angle3]
-        # gate_choice in [0, num_gates), angles in [-pi, pi]
-        self.action_space = spaces.Box(
-            low=np.array([0] + [-np.pi] * 3),
-            high=np.array([self.num_gates] + [np.pi] * 3),
-            dtype=np.float32
-        )
-        
-        self.observation_space = spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32)
-        
-        self.reset()
-        
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        self.steps = 0
-        self.target_U = random_unitary_haar()
-        self.current_U = np.eye(2, dtype=complex)
-        return self._flatten_complex(self.current_U), {}
-    
-    def step(self, action):
-        self.steps += 1
-        gate_choice = np.clip(action[0], 0, self.num_gates - 1e-6)  # Ensure within bounds
-        gate_idx = int(gate_choice)  # Discretize
-        angles = action[1:1 + self.param_counts[gate_idx]]  # Extract required angles
-        
-        gate = apply_gate(gate_idx, angles, self.gate_descriptions)
-        self.current_U = self.current_U @ gate
-        
-        fidelity = self.compute_fidelity(self.current_U, self.target_U)
-        done = bool(fidelity >= self.accuracy or self.steps >= self.max_steps)
-        
-        penalty = self.lambda_penalty * (self.steps / self.max_steps)
-        reward = fidelity - 1 - penalty if fidelity < self.accuracy else 0
-        
-        obs = self._flatten_complex(self.current_U)
-        info = {"is_success": fidelity >= self.accuracy}
-        return obs, reward, done, False, info
-    
-    def compute_fidelity(self, U, V):
-        return np.abs(np.trace(np.dot(U.conj().T, V))) / 2.0
-    
-    def _flatten_complex(self, U):
-        return np.concatenate([U.real.flatten(), U.imag.flatten()]).astype(np.float32)
+# Training data generation
+def generate_training_data(action_space, L=44, l_star=3):
+    W = [np.eye(8, dtype=complex)]  # Start with I
+    V = [0]
+    data = []
 
-# Variational optimization
-def variational_optimize(U_initial, U_target, gate_descriptions, param_counts, sequence):
-    def fidelity_loss(params):
-        U = np.eye(2, dtype=complex)
-        param_idx = 0
-        for gate_idx in sequence:
-            n_params = param_counts[gate_idx]
-            gate = apply_gate(gate_idx, params[param_idx:param_idx+n_params], gate_descriptions)
-            U = U @ gate
-            param_idx += n_params
-        return -np.abs(np.trace(np.dot(U.conj().T, U_target))) / 2.0
-    
-    total_params = sum(param_counts[gate_idx] for gate_idx in sequence)
-    initial_params = np.zeros(total_params)
-    bounds = [(-np.pi, np.pi)] * total_params
-    result = minimize(fidelity_loss, initial_params, method='L-BFGS-B', bounds=bounds)
-    return result.x
+    for l in range(1, L+1):
+        W_next = []
+        V_next = []
+        for w in W:
+            for a in action_space:
+                w_new = a @ w
+                # Compute value: min gates to revert to I (simplified)
+                fidelity = abs(np.trace(np.eye(8) @ np.conj(w_new).T)) / 8
+                value = -l if fidelity < 1 - 1e-4 else 0
+                W_next.append(w_new)
+                V_next.append(value)
 
-# AQ* search
-def aq_star_search(model, env, gate_descriptions, param_counts, max_depth=10):
-    from heapq import heappush, heappop
-    
-    start_U = np.eye(2, dtype=complex)
-    target_U = env.target_U
-    queue = [(0, 0, [], start_U)]
-    visited = set()
-    
-    while queue:
-        _, steps, seq, U = heappop(queue)
-        if steps > max_depth:
-            continue
-        
-        fidelity = env.compute_fidelity(U, target_U)
-        if fidelity >= env.accuracy:
-            return seq
-        
-        obs = env._flatten_complex(U)
-        for gate_idx in range(len(gate_descriptions)):
-            # Use model's angle prediction
-            action, _ = model.predict(obs, deterministic=True)
-            angles = action[1:1 + param_counts[gate_idx]]
-            new_U = U @ apply_gate(gate_idx, angles, gate_descriptions)
-            
-            new_key = tuple(new_U.flatten())
-            if new_key not in visited:
-                visited.add(new_key)
-                new_seq = seq + [gate_idx]
-                new_cost = -fidelity + steps
-                heappush(queue, (new_cost, steps + 1, new_seq, new_U))
-    
-    return seq
+        # Random sampling for l > l_star
+        if l > l_star:
+            indices = np.random.choice(len(W_next), size=min(10000, len(W_next)), replace=False)
+            W_next = [W_next[i] for i in indices]
+            V_next = [V_next[i] for i in indices]
 
-def train_hybrid_agent():
-    gate_descriptions, param_counts = get_basis_gates()
-    env = SingleQubitHybridEnv(gate_descriptions, param_counts, max_steps=10)
-    env = Monitor(env)
-    env = DummyVecEnv([lambda: env])
-    
-    policy_kwargs = dict(
-        net_arch=dict(pi=[256, 256], vf=[256, 256]),
-        activation_fn=nn.ReLU
-    )
-    
-    model = PPO(
-        "MlpPolicy",  # Standard policy for Box action space
-        env,
-        learning_rate=3e-4,
-        n_steps=2048,
-        batch_size=64,
-        n_epochs=10,
-        gamma=0.99,
-        gae_lambda=0.95,
-        ent_coef=0.01,
-        verbose=1,
-        policy_kwargs=policy_kwargs,
-        device="cuda" if torch.cuda.is_available() else "cpu"
-    )
-    
-    model.learn(total_timesteps=500_000)
-    model.save("ppo_hybrid_single_qubit")
-    return model, env, gate_descriptions, param_counts
+        # Prepare data for DQN: (state, action, value)
+        for w, v in zip(W_next, V_next):
+            state = np.concatenate([w.real.flatten(), w.imag.flatten()])
+            for a_idx, a in enumerate(action_space):
+                data.append((state, a_idx, v))
 
-def evaluate_agent(model, env, gate_descriptions, param_counts, n_evals=10):
-    success_count = 0
-    for i in range(n_evals):
-        obs, _ = env.reset()
-        done = False
-        steps = 0
-        gate_sequence = []
-        angle_sequence = []
-        
-        while not done and steps < env.max_steps:
-            action, _ = model.predict(obs, deterministic=True)
-            gate_idx = int(np.clip(action[0], 0, len(gate_descriptions) - 1e-6))
-            angles = action[1:1 + param_counts[gate_idx]]
-            gate_sequence.append(gate_idx)
-            angle_sequence.extend(angles)
-            obs, reward, done, _, info = env.step(action)
-            steps += 1
-        
-        refined_sequence = aq_star_search(model, env, gate_descriptions, param_counts)
-        
-        optimized_params = variational_optimize(env.current_U, env.target_U, gate_descriptions, param_counts, refined_sequence)
-        final_U = np.eye(2, dtype=complex)
-        param_idx = 0
-        for gate_idx in refined_sequence:
-            n_params = param_counts[gate_idx]
-            gate = apply_gate(gate_idx, optimized_params[param_idx:param_idx+n_params], gate_descriptions)
-            final_U = final_U @ gate
-            param_idx += n_params
-        
-        fidelity = env.compute_fidelity(final_U, env.target_U)
-        success = fidelity >= env.accuracy
-        success_count += int(success)
-        
-        print(f"Episode {i+1}/{n_evals} - Steps: {len(refined_sequence)}, Fidelity: {fidelity:.4f}, Success={success}")
-        if success:
-            print(f"Sequence: {[gate_descriptions[idx] for idx in refined_sequence]}")
-    
-    print(f"Success Rate: {success_count/n_evals:.2%}")
+        W = W_next
+        V = V_next
 
-if __name__ == "__main__":
-    model, env, gate_desc, param_counts = train_hybrid_agent()
-    evaluate_agent(model, env, gate_desc, param_counts, n_evals=20)
+    return data
+
+# Training loop
+dqn = DQN()
+target_dqn = DQN()
+target_dqn.load_state_dict(dqn.state_dict())
+optimizer = torch.optim.Adam(dqn.parameters(), lr=1e-3)
+data = generate_training_data(action_space)
+
+for l in range(1, 45):
+    for epoch in range(100 * l):
+        batch = np.random.choice(len(data), size=64)
+        states, actions, values = zip(*[data[i] for i in batch])
+        states = torch.FloatTensor(np.array(states))
+        actions = torch.LongTensor(actions)
+        values = torch.FloatTensor(values)
+
+        q_values = dqn(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+        with torch.no_grad():
+            next_states = []
+            for i, a in enumerate(actions):
+                # Reconstruct the unitary from the state vector
+                state = data[i][0]  # Shape (128,)
+                real_part = state[:64].reshape(8, 8)  # First 64 elements -> 8x8 real part
+                imag_part = state[64:].reshape(8, 8)  # Next 64 elements -> 8x8 imaginary part
+                unitary = real_part + 1j * imag_part  # Reconstruct the 8x8 complex unitary
+
+                # Apply the action (gate) to the unitary
+                new_unitary = action_space[a] @ unitary
+
+                # Convert the new unitary back to a state vector
+                new_state = np.concatenate([new_unitary.real.flatten(), new_unitary.imag.flatten()])
+                next_states.append(new_state)
+
+            next_states = torch.FloatTensor(np.array(next_states))
+            next_q = target_dqn(next_states).max(1)[0] - 1
+        loss = ((q_values - (next_q + values))**2).mean()
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if loss.item() < 0.02:
+            break
+
+    target_dqn.load_state_dict(dqn.state_dict())
+
+def aq_star_search(target_unitary, dqn, action_space, max_depth=500):
+    open_set = [(target_unitary, [], 0)]  # (unitary, gate sequence, g-score)
+    best_unitary = target_unitary
+    best_gates = []
+    best_fidelity = 0
+
+    for _ in range(max_depth):
+        if not open_set:
+            break
+
+        # Select node with best f-score
+        current, gates, g = max(open_set, key=lambda x: x[2] + dqn(torch.FloatTensor(
+                np.concatenate([x[0].real.flatten(), x[0].imag.flatten()])
+            ).unsqueeze(0)).max().item())
+        state = torch.FloatTensor(np.concatenate([current.real.flatten(), current.imag.flatten()]))
+        print("Input shape to DQN:", state.shape)
+        open_set.remove((current, gates, g))
+
+        # Check if goal reached
+        fidelity = abs(np.trace(np.eye(8) @ np.conj(current).T)) / 8
+        if fidelity >= 1 - 1e-4:
+            print(f"Solution found with fidelity: {fidelity}")
+            return gates[::-1]  # Reverse to get forward sequence
+
+        if fidelity > best_fidelity:
+            best_fidelity = fidelity
+            best_unitary = current
+            best_gates = gates
+
+        # Expand node
+        for a_idx, a in enumerate(action_space):
+            new_unitary = a @ current
+            new_g = g - 1
+            state = torch.FloatTensor(np.concatenate([new_unitary.real.flatten(), new_unitary.imag.flatten()])).unsqueeze(0)
+            f_score = new_g + dqn(state).max().item()
+            new_gates = gates + [a_idx]
+            open_set.append((new_unitary, new_gates, f_score))
+
+    return best_gates[::-1] if best_gates else None  # Return best found if max depth reached
+
+# Run AQ* search
+dqn.eval()
+gate_sequence = aq_star_search(target_unitary, dqn, action_space)
+
+# Convert gate sequence to circuit
+# Convert gate sequence to circuit
+if gate_sequence is not None:
+    circuit = []
+    cz_count = 0
+    for a_idx in gate_sequence:
+        gate = action_space[a_idx]
+        if a_idx in [18, 19]:  # CZ gates are at indices 18 (Q2-Q3) and 19 (Q3-Q6)
+            cz_count += 1
+        circuit.append(gate)
+        print(f"Compiled circuit with {cz_count} CZ gates")
+else:
+    print("No solution found")

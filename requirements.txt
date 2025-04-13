@@ -14,3 +14,4 @@ gymnasium==0.29.1
 ipykernel==6.29.5
 plotly==6.0.1
 kaleido
+qiskit==2.0.0

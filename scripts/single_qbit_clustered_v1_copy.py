@@ -39,18 +39,25 @@ def rotation_gate(axis, angle):
             [0, np.exp(1j * angle / 2)]
         ], dtype=complex)
 
-gate_descriptions = ["rxp", "rxn", "ryp", "ryn", "rzp", "rzn"]
-gate_matrices = [
-    rotation_gate('x',  np.pi / 128),
-    rotation_gate('x', -np.pi / 128),
-    rotation_gate('y',  np.pi / 128),
-    rotation_gate('y', -np.pi / 128),
-    rotation_gate('z',  np.pi / 128),
-    rotation_gate('z', -np.pi / 128)
-]
+# gate_descriptions = ["rxp", "rxn", "ryp", "ryn", "rzp", "rzn"]
+# gate_matrices = [
+#     rotation_gate('x',  np.pi / 128),
+#     rotation_gate('x', -np.pi / 128),
+#     rotation_gate('y',  np.pi / 128),
+#     rotation_gate('y', -np.pi / 128),
+#     rotation_gate('z',  np.pi / 128),
+#     rotation_gate('z', -np.pi / 128)
+# ]
 
+gate_descriptions = ["V1", "V2", "V3"]
+gate_matrices = [
+    (1/np.sqrt(5)) * np.array([[1, 2j], [2j, 1]], dtype=complex),  # V1
+    (1/np.sqrt(5)) * np.array([[1, 2], [-2, 1]], dtype=complex),   # V2
+    (1/np.sqrt(5)) * np.array([[1+2j, 0], [0, 1-2j]], dtype=complex)  # V3
+]
+# Define the QuantumCompilerEnv class
 class QuantumCompilerEnv(gym.Env):
-    def __init__(self, gate_set, tolerance=0.98, max_steps=130):
+    def __init__(self, gate_set, tolerance=0.02, max_steps=130):
         super().__init__()
         self.gate_set = gate_set
         self.tolerance = tolerance
@@ -58,15 +65,15 @@ class QuantumCompilerEnv(gym.Env):
 
         # Use [-2,2] observation bounds (similar to Env B)
         self.observation_space = spaces.Dict({
-            'observation': spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32),
-            'desired_goal': spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32),
-            'achieved_goal': spaces.Box(low=-2, high=2, shape=(8,), dtype=np.float32)
+            'observation': spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32),
+            'desired_goal': spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32),
+            'achieved_goal': spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32)
         })
         self.action_space = spaces.Discrete(len(self.gate_set))
 
-        # Axis transitions from Env A
-        self.axis_map = {0: 'x', 1: 'x', 2: 'y', 3: 'y', 4: 'z', 5: 'z'}
-        self.last_axis = None
+        # # Axis transitions from Env A
+        # self.axis_map = {0: 'x', 1: 'x', 2: 'y', 3: 'y', 4: 'z', 5: 'z'}
+        # self.last_axis = None
 
         self.reset()
 
@@ -82,28 +89,11 @@ class QuantumCompilerEnv(gym.Env):
     def step(self, action):
         gate = self.gate_set[action]
         self.U_n = np.dot(self.U_n, gate)
-
-        fidelity = self.average_gate_fidelity(self.U_n, self.target_U)
-        if fidelity < self.tolerance:
-            reward = fidelity - 1.0
-        else:
-            reward = 0.0
-
-        current_axis = self.axis_map[int(action)]
-        if self.last_axis is not None and self.last_axis != current_axis:
-            reward -= 2.0
-        else:
-            reward += 0.2
-
-        self.last_axis = current_axis
-
-        self.current_step += 1
-        done = (fidelity >= self.tolerance) or (self.current_step >= self.max_steps)
-
-        if done and fidelity >= self.tolerance:
-            reward += 5.0 * (self.max_steps - self.current_step)
-
         obs = self._get_observation()
+        reward = self.compute_reward(obs['achieved_goal'], obs['desired_goal'], {})
+        diff = self.get_diff(self.U_n, self.target_U)
+        done = (diff <= self.tolerance) or (self.current_step >= self.max_steps)
+        self.current_step += 1
         info = {}
         truncated = False
         return obs, reward, done, truncated, info
@@ -121,31 +111,40 @@ class QuantumCompilerEnv(gym.Env):
             'desired_goal': desired_goal
         }
 
-    def average_gate_fidelity(self, U, V):
-        diff = U - V
-        singular_values = np.linalg.svd(diff, compute_uv=False)
-        return 1 - np.max(singular_values)
+    def get_diff(self, U, V):
+        diff = np.linalg.norm(U - V, 2)
+        return diff
 
     def compute_reward(self, achieved_goals, desired_goals, info):
-        n = achieved_goals.shape[0]
-        rewards = np.zeros(n, dtype=np.float32)
-        for i in range(n):
-            U_n = np.array([
-                [achieved_goals[i][0] + 1j*achieved_goals[i][1], achieved_goals[i][2] + 1j*achieved_goals[i][3]],
-                [achieved_goals[i][4] + 1j*achieved_goals[i][5], achieved_goals[i][6] + 1j*achieved_goals[i][7]]
-            ], dtype=complex)
-            U_target = np.array([
-                [desired_goals[i][0] + 1j*desired_goals[i][1], desired_goals[i][2] + 1j*desired_goals[i][3]],
-                [desired_goals[i][4] + 1j*desired_goals[i][5], desired_goals[i][6] + 1j*desired_goals[i][7]]
-            ], dtype=complex)
+        # Ensure inputs are 2D: (batch_size, 8)
+        if achieved_goals.ndim == 1:
+            achieved_goals = achieved_goals[None, :]  # Add batch dimension if single input
+        if desired_goals.ndim == 1:
+            desired_goals = desired_goals[None, :]
+        batch_size = achieved_goals.shape[0]
 
-            fidelity = self.average_gate_fidelity(U_n, U_target)
-            if fidelity < self.tolerance:
-                rewards[i] = fidelity - 1.0
-            else:
-                rewards[i] = 0.0
-        return rewards
+        # Construct batched complex matrices
+        U_n = np.zeros((batch_size, 2, 2), dtype=complex)
+        U_n[:, 0, 0] = achieved_goals[:, 0] + 1j * achieved_goals[:, 4]
+        U_n[:, 0, 1] = achieved_goals[:, 1] + 1j * achieved_goals[:, 5]
+        U_n[:, 1, 0] = achieved_goals[:, 2] + 1j * achieved_goals[:, 6]
+        U_n[:, 1, 1] = achieved_goals[:, 3] + 1j * achieved_goals[:, 7]
 
+        U_target = np.zeros((batch_size, 2, 2), dtype=complex)
+        U_target[:, 0, 0] = desired_goals[:, 0] + 1j * desired_goals[:, 4]
+        U_target[:, 0, 1] = desired_goals[:, 1] + 1j * desired_goals[:, 5]
+        U_target[:, 1, 0] = desired_goals[:, 2] + 1j * desired_goals[:, 6]
+        U_target[:, 1, 1] = desired_goals[:, 3] + 1j * desired_goals[:, 7]
+
+        # Compute differences for all pairs
+        diffs = np.array([np.linalg.norm(U_n[i] - U_target[i], 2) for i in range(batch_size)])
+
+        # Compute rewards
+        rewards = np.where(diffs < self.tolerance, 0, -diffs)
+
+
+        # Return scalar if batch_size is 1 (for step), array otherwise (for HER)
+        return rewards[0] if batch_size == 1 else rewards
 
 class PlottingCallback(BaseCallback):
     def __init__(self, verbose=0, save_path=None):
@@ -171,7 +170,7 @@ class PlottingCallback(BaseCallback):
         plt.ylabel("Reward")
         plt.legend()
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "single_qbit_clustered_v1.png"))
+            plt.savefig(os.path.join(self.save_path, "single_qbit_clustered_v1_copy.png"))
         plt.close()
 
         plt.figure()
@@ -181,7 +180,7 @@ class PlottingCallback(BaseCallback):
         plt.ylabel("Length")
         plt.legend()
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "single_qbit_clustered_v1_length.png"))
+            plt.savefig(os.path.join(self.save_path, "single_qbit_clustered_v1_length_copy.png"))
         plt.close()
 
 def evaluate_agent(model:DQN, vec_env, num_episodes=5):
@@ -198,12 +197,18 @@ def evaluate_agent(model:DQN, vec_env, num_episodes=5):
             obs, reward, done, truncated, info = env.step(action)
             gate_sequence.append(action)
             done = done or truncated
-        fidelity = env.average_gate_fidelity(env.U_n, target_U)
-        if fidelity >= env.tolerance:
+        diff = env.get_diff(env.U_n, target_U)
+        if diff <= env.tolerance:
             success_count += 1
             gate_descriptions_list = [gate_descriptions[int(action)] for action in gate_sequence]
             print("Gate Sequence:")
             print(gate_descriptions_list)
+            # Write the target unitary, the gate sequence, and the final unitary to a file
+            with open("gate_sequence.txt", "a") as f:
+                f.write(f"Target Unitary:\n{target_U}\n")
+                f.write(f"Gate Sequence: {gate_descriptions_list}\n")
+                f.write(f"Final Unitary:\n{env.U_n}\n\n")
+
     return success_count / num_episodes
 
 def make_env(seed=None, idx=0):
@@ -212,7 +217,7 @@ def make_env(seed=None, idx=0):
     wraps it with Monitor, etc.
     """
     def _init():
-        env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.98)
+        env = QuantumCompilerEnv(gate_set=gate_matrices, tolerance=0.02)
         # You could do: env.seed(seed + idx) if you want distinct seeds
         env = Monitor(env)
         return env
@@ -232,15 +237,15 @@ def make_vec_env(n_envs=1, use_subproc=True, seed=0):
 
 if __name__ == "__main__":
     best_params = {
-        'n_envs': 16,
-        'learning_rate': 5.919451711225833e-05,
-        'batch_size': 1024,
-        'buffer_size': 50000,
-        'exploration_fraction': 0.7,
-        'learning_starts': 45824,
+        'n_envs': 9,
+        'learning_rate': 0.00010722935969430622,
+        'batch_size': 512,
+        'buffer_size': 500000,
+        'exploration_fraction': 0.2072585013614698,
+        'learning_starts': 132931,
         'train_freq': (1, 'step'),
         'net_arch_depth': 3,
-        'net_arch_width': 64,
+        'net_arch_width': 128,
         'device': 'cuda',
     }
     n_envs = best_params["n_envs"]
@@ -266,6 +271,7 @@ if __name__ == "__main__":
         exploration_final_eps=0.05,
         exploration_fraction=best_params["exploration_fraction"],
         learning_starts=best_params["learning_starts"],
+        gamma=0.99931,
         verbose=1,
         device=best_params["device"],
         policy_kwargs=policy_kwargs,
@@ -277,11 +283,14 @@ if __name__ == "__main__":
     )
 
     callback = PlottingCallback(save_path='./data')
-    model.learn(total_timesteps=1_000_000_000, log_interval=1000, callback=callback)
+    model.learn(total_timesteps=20_000_000, log_interval=1000, callback=callback)
 
     # Save the model
-    model.save("single_qbit_clustered_v1")
-    
+    model.save("single_qbit_clustered_v1_copy")
+    # # Load the model
+    # model = DQN.load("single_qbit_clustered_v1_copy", env=vec_env)
+    # Evaluate the model
+
     eval_env = make_vec_env(n_envs=1, use_subproc=False)
-    final_success = evaluate_agent(model, eval_env, num_episodes=10)
+    final_success = evaluate_agent(model, eval_env, num_episodes=1000)
     print(f"Final success rate: {final_success}")
