@@ -6,3 +6,5 @@
 *.png
 *.jsonl
 **/**/*.csv
+gate*.txt
+*.jsonl

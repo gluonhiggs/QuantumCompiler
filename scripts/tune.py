@@ -227,6 +227,7 @@ def objective(trial):
 
     # 3) Create vectorized env
     vec_env = make_vec_env(n_envs=n_envs, use_subproc=True)
+    
     class RewardCallback(BaseCallback):
         def __init__(self):
             super().__init__()
@@ -265,7 +266,7 @@ def objective(trial):
     )
 
     # 5) Train for 200k timesteps
-    model.learn(total_timesteps=1_000_000, callback=callback)
+    model.learn(total_timesteps=100_000_000, callback=callback)
 
     # Calculate mean reward
     mean_reward = callback.total_reward / max(1, callback.episode_count)  # Avoid division by 0

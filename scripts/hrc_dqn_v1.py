@@ -125,31 +125,8 @@ class QuantumCompilerEnv(gym.Env):
 
     def compute_accuracy(self, U, V):
         """Compute the accuracy between two unitary matrices U and V using operator norm error."""
-        U = np.array(U)
-        V = np.array(V)
-        
-        if U.ndim == 2 and V.ndim == 2:
-            # Single matrix case
-            operator_norm_error = np.linalg.norm(U - V, ord=2)
-            accuracy = 1 - operator_norm_error
-            accuracy = np.clip(accuracy, 0, 1)  # Ensure accuracy is within [0, 1]
-            return accuracy
-        elif U.ndim == 3 and V.ndim == 3:
-            # Batch case
-            operator_norm_error = np.linalg.norm(U - V, ord=2, axis=(1, 2))
-            accuracy = 1 - operator_norm_error
-            accuracy = np.clip(accuracy, 0, 1)
-            return accuracy
-        else:
-            # Handle mixed dimensions
-            if U.ndim == 2:
-                U = U[np.newaxis, :, :]
-            if V.ndim == 2:
-                V = V[np.newaxis, :, :]
-            operator_norm_error = np.linalg.norm(U - V, ord=2, axis=(1, 2))
-            accuracy = 1 - operator_norm_error
-            accuracy = np.clip(accuracy, 0, 1)
-            return accuracy.squeeze()
+        diff = np.linalg.norm(U - V, 2)
+        return 1 - diff / np.sqrt(2**4)  # Normalized fidelity for 2x2 matrices
 
 
 class PlottingCallback(BaseCallback):

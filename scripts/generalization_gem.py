@@ -90,7 +90,7 @@ import torch
 import torch.nn as nn
 
 class DQN(nn.Module):
-    def __init__(self, input_dim=128, output_dim=20):
+    def __init__(self, input_dim=128, output_dim=1):
         super(DQN, self).__init__()
         self.input_layer = nn.Linear(input_dim, 8000)
         self.hidden1 = nn.Linear(8000, 3000)
@@ -204,46 +204,113 @@ for l in range(1, 45):
     target_dqn.load_state_dict(dqn.state_dict())
 
 def aq_star_search(target_unitary, dqn, action_space, max_depth=500):
-    # Use a list as a min-heap (we'll negate f-scores to simulate a max-heap)
-    # Format: [(-f_score, counter, (unitary, gate_sequence, g_score))]
-    counter = 0  # Unique counter to break ties in heap
-    open_set = [(0, counter, (target_unitary, [], 0))]  # (f_score, counter, (unitary, gates, g))
-    heapq.heapify(open_set)
-    
-    best_unitary = target_unitary
-    best_gates = []
-    best_fidelity = 0
+    # Use a unique ID for each entry to handle potential duplicate states/f-scores
+    # And store (-f_score, g, id, unitary, gates) to use heapq (min-heap)
+    # We negate f_score because heapq is a min-heap, and we want to maximize f
+    import heapq
+    import itertools
+    counter = itertools.count() # Unique sequence numbers
 
-    for _ in range(max_depth):
-        if not open_set:
+    # Initial state: Start from target, g=0 (0 steps from target)
+    initial_state_flat = np.concatenate([target_unitary.real.flatten(), target_unitary.imag.flatten()])
+    initial_state_tensor = torch.FloatTensor(initial_state_flat).unsqueeze(0)
+    with torch.no_grad():
+        # *** CRITICAL: Check if DQN output should be single value (V) or max(Q) ***
+        # Assuming DQN outputs Q-values for now, as per your code structure
+        # h_score = dqn(initial_state_tensor).max().item()
+        # If DQN learns V(s) directly (output_dim=1), use:
+        # h_score = dqn(initial_state_tensor).item()
+        # Let's proceed assuming Q-values for now based on your code structure
+        # but highlight this potential mismatch with the paper later.
+        h_score = dqn(initial_state_tensor).max().item()
+
+    initial_g = 0
+    initial_f = initial_g + h_score # f = g + h. Note g=0 initially.
+    unique_id = next(counter)
+
+    # Heap stores: (-f_score, g, unique_id, unitary, gates_list)
+    # Negate f_score for max-heap behavior using min-heap
+    open_set_heap = [(-initial_f, initial_g, unique_id, target_unitary, [])]
+    heapq.heapify(open_set_heap)
+
+    # Keep track of visited states (optional but good practice for A*)
+    # Key: hashable representation of unitary (e.g., tobytes), Value: best g-score
+    visited = {}
+    visited[target_unitary.tobytes()] = initial_g
+
+    best_unitary_at_identity = None # Store the state closest to Identity found so far
+    best_gates_to_identity = None
+    min_dist_to_identity = 1.0 # Max possible distance is 1-fidelity = 1
+
+    print(f"Starting AQ* search from target...")
+
+    for i in range(max_depth):
+        if not open_set_heap:
+            print("Search space exhausted.")
             break
 
-        # Pop the node with the best (highest) f-score (lowest -f_score in min-heap)
-        _, _, (current, gates, g) = heapq.heappop(open_set)
+        # Get node with highest f-score (lowest -f_score from min-heap)
+        neg_f, g, _, current_unitary, gates = heapq.heappop(open_set_heap)
+        #f = -neg_f
 
-        # Check if goal reached
-        fidelity = abs(np.trace(np.eye(8) @ np.conj(current).T)) / 8
-        if fidelity >= 1 - 1e-4:
-            print(f"Solution found with fidelity: {fidelity}")
+        # Check if goal reached (current_unitary is close to Identity)
+        fidelity_to_identity = abs(np.trace(np.eye(8) @ np.conj(current_unitary).T)) / 8
+        dist_to_identity = 1.0 - fidelity_to_identity
+        #print(f"Step {i}, Popped node. Fidelity to I: {fidelity_to_identity:.6f}, g={g}, f={f:.4f}, Heap size: {len(open_set_heap)}")
+
+
+        if fidelity_to_identity >= 1 - 1e-4:
+            print(f"Solution found at step {i} with fidelity: {fidelity_to_identity:.6f}")
+            # Reverse gates because search went Target -> Identity
             return gates[::-1]
 
-        if fidelity > best_fidelity:
-            best_fidelity = fidelity
-            best_unitary = current
-            best_gates = gates
+        # Track the best state encountered in terms of closeness to Identity
+        if dist_to_identity < min_dist_to_identity:
+             min_dist_to_identity = dist_to_identity
+             best_unitary_at_identity = current_unitary
+             best_gates_to_identity = gates
+             print(f"  New best state found: Dist to I: {dist_to_identity:.6f}, Path length: {-g}")
 
-        # Expand node
+
+        # Expand node: Apply actions (inverse gates conceptually)
+        # In the paper, they apply g^-1. If action_space contains inverses, applying 'a' might be equivalent.
+        # Let's stick to a @ current_unitary as in your code for now.
         for a_idx, a in enumerate(action_space):
-            new_unitary = a @ current
-            new_g = g - 1
-            state = torch.tensor(np.concatenate([new_unitary.real.flatten(), new_unitary.imag.flatten()]), dtype=torch.float32).unsqueeze(0)
-            print("Input shape to DQN (expansion):", state.shape)  # Should be [1, 128]
-            f_score = new_g + dqn(state).max().item()
-            counter += 1
-            heapq.heappush(open_set, (-f_score, counter, (new_unitary, gates + [a_idx], f_score)))
+            # Apply the gate 'a'
+            # Note: Paper applies g^-1. If 'a' is g, we should use a.conj().T
+            # Let's assume a @ current_unitary is the intended operation for now.
+            new_unitary = a @ current_unitary
+            new_unitary_bytes = new_unitary.tobytes()
 
-    print(f"Search failed to reach target fidelity. Best fidelity: {best_fidelity}")
-    return best_gates[::-1] if best_gates else None
+            # g score increases by 1 step away from target, which is -1 in cost terms
+            new_g = g - 1
+
+            # Check if visited with a better or equal g-score
+            if new_unitary_bytes in visited and visited[new_unitary_bytes] <= new_g:
+                continue # Already found a shorter or equal path to this state
+
+            # Calculate heuristic h(new_unitary) using DQN
+            new_state_flat = np.concatenate([new_unitary.real.flatten(), new_unitary.imag.flatten()])
+            new_state_tensor = torch.FloatTensor(new_state_flat).unsqueeze(0)
+            with torch.no_grad():
+                # *** Potential Mismatch Point ***
+                # Using max(Q(s',a')) as h(s')
+                h_score = dqn(new_state_tensor).max().item()
+                # If DQN learns V(s') directly (output_dim=1), use:
+                # h_score = dqn(new_state_tensor).item()
+
+            new_f = new_g + h_score
+
+            # Add to visited list and priority queue
+            visited[new_unitary_bytes] = new_g
+            new_gates = gates + [a_idx]
+            unique_id = next(counter)
+            heapq.heappush(open_set_heap, (-new_f, new_g, unique_id, new_unitary, new_gates))
+
+    print(f"Max depth {max_depth} reached.")
+    print(f"Best state found had distance to Identity: {min_dist_to_identity:.6f}")
+    # Return best path found if exact solution wasn't reached
+    return best_gates_to_identity[::-1] if best_gates_to_identity is not None else None
 # Run AQ* search
 dqn.eval()
 gate_sequence = aq_star_search(target_unitary, dqn, action_space)

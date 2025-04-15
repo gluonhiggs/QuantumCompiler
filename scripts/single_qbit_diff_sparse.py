@@ -13,6 +13,7 @@ from stable_baselines3.common.monitor import Monitor
 from optuna.importance import get_param_importances
 import gc
 import torch
+import optuna
 
 
 def get_haar_random_unitary():
@@ -70,11 +71,6 @@ class QuantumCompilerEnv(gym.Env):
             'achieved_goal': spaces.Box(low=-1, high=1, shape=(8,), dtype=np.float32)
         })
         self.action_space = spaces.Discrete(len(self.gate_set))
-
-        # # Axis transitions from Env A
-        # self.axis_map = {0: 'x', 1: 'x', 2: 'y', 3: 'y', 4: 'z', 5: 'z'}
-        # self.last_axis = None
-
         self.reset()
 
     def reset(self, *, seed=None, options=None):
@@ -140,7 +136,7 @@ class QuantumCompilerEnv(gym.Env):
         diffs = np.array([np.linalg.norm(U_n[i] - U_target[i], 2) for i in range(batch_size)])
 
         # Compute rewards
-        rewards = np.where(diffs < self.tolerance, 0, -self.current_step/self.max_steps)
+        rewards = np.where(diffs < self.tolerance, 0, -1/self.max_steps)
 
 
         # Return scalar if batch_size is 1 (for step), array otherwise (for HER)
@@ -170,7 +166,7 @@ class PlottingCallback(BaseCallback):
         plt.ylabel("Reward")
         plt.legend()
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "single_qbit_clustered_v1_copy.png"))
+            plt.savefig(os.path.join(self.save_path, "single_qbit_diff_sparse.png"))
         plt.close()
 
         plt.figure()
@@ -180,7 +176,7 @@ class PlottingCallback(BaseCallback):
         plt.ylabel("Length")
         plt.legend()
         if self.save_path:
-            plt.savefig(os.path.join(self.save_path, "single_qbit_clustered_v1_length_copy.png"))
+            plt.savefig(os.path.join(self.save_path, "single_qbit_diff_sparse_length.png"))
         plt.close()
 
 def evaluate_agent(model:DQN, vec_env, num_episodes=5):
@@ -205,7 +201,7 @@ def evaluate_agent(model:DQN, vec_env, num_episodes=5):
             print("Gate Sequence:")
             print(gate_descriptions_list)
             # Write the target unitary, the gate sequence, and the final unitary to a file
-            with open("gate_sequence.txt", "a") as f:
+            with open("gate_sequence_sparse.txt", "a") as f:
                 f.write(f"Target Unitary:\n{target_U}\n")
                 f.write(f"Gate Sequence: {gate_descriptions_list}\n")
                 f.write(f"Final Unitary:\n{env.U_n}\n\n")
@@ -237,17 +233,17 @@ def make_vec_env(n_envs=1, use_subproc=True, seed=0):
 
 def objective(trial):
     # 1) Suggest the number of parallel envs
-    n_envs = trial.suggest_int("n_envs", 1, 32)
+    n_envs = trial.suggest_int("n_envs", 1, 16)
 
     # 2) Suggest other hyperparams
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 5e-3, log=True)
     batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512, 1024, 2048])
-    buffer_size = trial.suggest_categorical("buffer_size", [5000, 10000, 20000, 50000, 100000])
+    buffer_size = trial.suggest_categorical("buffer_size", [200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000])
     exploration_fraction = trial.suggest_float("exploration_fraction", 0.2, 1.0)
-    learning_starts = trial.suggest_int("learning_starts", 10000, 100000)
+    learning_starts = trial.suggest_int("learning_starts", 10000, 200000)
     train_freq = trial.suggest_categorical("train_freq", [(1, 'step'), (2, 'step'), (4, 'step'), (8, 'step')])
-    net_arch_depth = trial.suggest_categorical("net_arch_depth", [1, 2, 3])
-    net_arch_width = trial.suggest_categorical("net_arch_width", [64, 128, 256, 512])
+    net_arch_depth = trial.suggest_categorical("net_arch_depth", [1, 2, 3, 4, 5, 6, 7, 8])
+    net_arch_width = trial.suggest_categorical("net_arch_width", [64, 128, 256, 512, 1024])
     device = trial.suggest_categorical("device", ["cpu", "cuda"])
 
     # Build net_arch
@@ -259,7 +255,20 @@ def objective(trial):
 
     # 3) Create vectorized env
     vec_env = make_vec_env(n_envs=n_envs, use_subproc=True)
+    class RewardCallback(BaseCallback):
+        def __init__(self):
+            super().__init__()
+            self.total_reward = 0
+            self.episode_count = 0
 
+        def _on_step(self):
+            if self.locals.get('dones')[0]:
+                ep_info = self.locals.get('infos')[0].get('episode')
+                if ep_info:
+                    self.total_reward += ep_info['r']
+                    self.episode_count += 1
+            return True
+    callback = RewardCallback()
     # 4) Build model
     model = DQN(
         'MultiInputPolicy',
@@ -269,10 +278,10 @@ def objective(trial):
         train_freq= train_freq,
         buffer_size=buffer_size,
         exploration_initial_eps=1.0,
-        exploration_final_eps=0.05,
+        exploration_final_eps=0.1,
         exploration_fraction=exploration_fraction,
         learning_starts=learning_starts,
-        verbose=0,
+        verbose=1,
         device=device,
         policy_kwargs=policy_kwargs,
         replay_buffer_class=HerReplayBuffer,
@@ -282,34 +291,39 @@ def objective(trial):
         )
     )
     # 5) Train for 200k timesteps
-    model.learn(total_timesteps=200_000)
+    model.learn(total_timesteps=1_000_000, callback =callback, log_interval=100)
 
     # 6) Evaluate
-    # We can either evaluate on the vectorized environment (using the first env)
-    # or create a separate single env. Let's do a separate single env to avoid
-    # confusion with multiple parallel instances
-    eval_env = make_vec_env(n_envs=1, use_subproc=False)  # single env
-    success_rate = evaluate_agent(model, eval_env, num_episodes=10)
+    mean_reward = callback.total_reward / max(1, callback.episode_count)  # Avoid division by 0
 
-    # Return success_rate to maximize
-    return success_rate
+    # Cleanup
+    del model
+    del vec_env
+    gc.collect()
+    return mean_reward
 
 if __name__ == "__main__":
-    
-    best_params = {
-        'n_envs': 9,
-        'learning_rate': 0.00010722935969430622,
-        'batch_size': 200,
-        'buffer_size': 500000,
-        'exploration_fraction': 0.2072585013614698,
-        'learning_starts': 132931,
-        'train_freq': (1, 'step'),
-        'net_arch_depth': 3,
-        'net_arch_width': 128,
-        'device': 'cuda',
-    }
-    n_envs = best_params["n_envs"]
-    vec_env = make_vec_env(n_envs=n_envs, use_subproc=(n_envs > 1))
+    # Example usage of Optuna
+    sampler = optuna.samplers.TPESampler(seed=123)
+    study = optuna.create_study(direction="maximize", sampler=sampler)
+    study.optimize(objective, n_trials=20)  # e.g. 5 trials for demonstration
+
+    print("Number of finished trials: ", len(study.trials))
+    print("Best trial:")
+    trial = study.best_trial
+    print(f"  Value (Success Rate): {trial.value}")
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print(f"    {key}: {value}")
+    # Write the best trial to a CSV file
+    with open("best_trial.csv", "w") as f:
+        f.write("param,value\n")
+        for key, value in trial.params.items():
+            f.write(f"{key},{value}\n")
+    fig = optuna.visualization.plot_param_importances(study)
+    fig.write_image("param_importances.png")
+    best_params = trial.params
+    vec_env = make_vec_env(n_envs=best_params["n_envs"], use_subproc=(best_params["n_envs"] > 1))
 
     net_arch_depth = best_params["net_arch_depth"]
     net_arch_width = best_params["net_arch_width"]
@@ -346,7 +360,7 @@ if __name__ == "__main__":
     model.learn(total_timesteps=20_000_000, log_interval=1000, callback=callback)
 
     # Save the model
-    model.save("single_qbit_clustered_v1_copy")
+    model.save("single_qbit_diff_sparse")
     # # Load the model
     # model = DQN.load("single_qbit_clustered_v1_copy", env=vec_env)
     # Evaluate the model
